@@ -20,6 +20,16 @@ venv/
 node_modules/
 dist/
 .npm
+mobile/node_modules/
+mobile/dist/
+
+# Expo
+.expo/
+mobile/.expo/
+mobile/.expo-shared/
+
+# Web archive (temporary, deleted after MVP)
+_archive_web/
 
 # OS
 .DS_Store
