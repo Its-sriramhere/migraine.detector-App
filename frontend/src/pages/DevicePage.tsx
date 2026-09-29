@@ -48,7 +48,7 @@ export function DevicePage() {
 
   const load = async () => {
     try {
-      const list = await api.get<Device[]>("/api/devices");
+      const list = await api.get<Device[]>("/devices");
       setDevices(list);
     } catch {
       /* ignore */
@@ -60,7 +60,7 @@ export function DevicePage() {
     setBusy(true);
     setError("");
     try {
-      await api.post("/api/devices/register", { device_identifier: identifier, device_name: name });
+      await api.post("/devices/register", { device_identifier: identifier, device_name: name });
       identifier && setIdentifier("");
       await load();
     } catch (err) {

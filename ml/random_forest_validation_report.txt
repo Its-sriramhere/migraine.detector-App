@@ -1,0 +1,109 @@
+RANDOM FOREST VALIDATION
+========================
+Dataset: datasets/rf_compare_features.csv
+Samples: 50000
+Features: 31 usable (18 all-NaN dropped: activity, heart, heart_rate, hrv)
+Migraine samples: 12489
+Non-migraine samples: 37511
+
+5-FOLD CROSS VALIDATION (stratified, random_state=42)
+-----------------------------------------------------
+Fold 1:
+Accuracy: 0.7915
+Precision: 0.6873
+Recall: 0.3028
+F1: 0.4204
+ROC-AUC: 0.7900
+
+Fold 2:
+Accuracy: 0.7900
+Precision: 0.6783
+Recall: 0.3030
+F1: 0.4189
+ROC-AUC: 0.7857
+
+Fold 3:
+Accuracy: 0.7927
+Precision: 0.6812
+Recall: 0.3199
+F1: 0.4353
+ROC-AUC: 0.7888
+
+Fold 4:
+Accuracy: 0.7922
+Precision: 0.6906
+Recall: 0.3046
+F1: 0.4228
+ROC-AUC: 0.7834
+
+Fold 5:
+Accuracy: 0.7882
+Precision: 0.6661
+Recall: 0.3050
+F1: 0.4185
+ROC-AUC: 0.7844
+
+FINAL RESULTS (random_forest)
+-----------------------------
+Accuracy: 0.7909 ± 0.0018
+Precision: 0.6807 ± 0.0095
+Recall: 0.3071 ± 0.0072
+F1-score: 0.4232 ± 0.0070
+ROC-AUC: 0.7865 ± 0.0028
+
+MODEL CONSISTENCY (random_forest)
+-----------------
+Accuracy STD: 0.0018
+Recall STD: 0.0072
+F1 STD: 0.0070
+
+CONFUSION MATRIX (aggregate over 5 folds)
+TN: 35711  FP: 1800
+FN: 8654  TP: 3835
+
+TIMING (random_forest, 5 folds total)
+Training time: 15.55s
+Prediction/inference time: 1.244s
+
+FEATURE IMPORTANCE (random_forest, mean ± std across folds)
+------------------
+temperature_baseline_dev: 0.0707 ± 0.0010
+systolic_bp_baseline_dev: 0.0574 ± 0.0010
+temperature_change: 0.0499 ± 0.0008
+diastolic_bp_baseline_dev: 0.0474 ± 0.0006
+spo2_baseline_dev: 0.0470 ± 0.0009
+temperature_mean: 0.0419 ± 0.0004
+systolic_bp_change: 0.0411 ± 0.0005
+temperature_slope: 0.0411 ± 0.0005
+systolic_bp_slope: 0.0386 ± 0.0003
+systolic_bp_mean: 0.0385 ± 0.0004
+spo2_slope: 0.0382 ± 0.0005
+diastolic_bp_slope: 0.0374 ± 0.0003
+diastolic_bp_change: 0.0368 ± 0.0004
+diastolic_bp_mean: 0.0355 ± 0.0002
+temperature_std: 0.0345 ± 0.0002
+systolic_bp_std: 0.0343 ± 0.0002
+diastolic_bp_std: 0.0341 ± 0.0003
+temperature_min: 0.0328 ± 0.0003
+temperature_max: 0.0326 ± 0.0003
+spo2_mean: 0.0298 ± 0.0003
+spo2_std: 0.0296 ± 0.0001
+systolic_bp_min: 0.0286 ± 0.0003
+systolic_bp_max: 0.0285 ± 0.0001
+diastolic_bp_min: 0.0260 ± 0.0002
+spo2_change: 0.0259 ± 0.0005
+diastolic_bp_max: 0.0256 ± 0.0002
+spo2_min: 0.0085 ± 0.0001
+spo2_max: 0.0075 ± 0.0001
+activity_slope: 0.0000 ± 0.0000
+hrv_slope: 0.0000 ± 0.0000
+heart_rate_slope: 0.0000 ± 0.0000
+
+COMPARISON MODELS (same 5 folds)
+-------------------------------
+logistic_regression: accuracy=0.7974±0.0035  precision=0.6626±0.0155  recall=0.3856±0.0089  f1=0.4874±0.0082  roc_auc=0.8062±0.0027
+  train=0.78s predict=0.080s cm=[TN 35056 FP 2455 FN 7673 TP 4816]
+svm: accuracy=0.7341±0.0036  precision=0.4779±0.0048  recall=0.6979±0.0084  f1=0.5673±0.0042  roc_auc=0.7926±0.0021
+  train=6666.99s predict=281.654s cm=[TN 27989 FP 9522 FN 3773 TP 8716]
+xgboost: accuracy=0.7952±0.0024  precision=0.6644±0.0133  recall=0.3644±0.0047  f1=0.4706±0.0027  roc_auc=0.8002±0.0025
+  train=3.99s predict=0.131s cm=[TN 35209 FP 2302 FN 7938 TP 4551]

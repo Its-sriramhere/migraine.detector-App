@@ -70,6 +70,8 @@ def submit_responses(
     d = dict(profile)
     if isinstance(d.get("trigger_profile"), str):
         d["trigger_profile"] = json.loads(d["trigger_profile"])
+    if d.get("profile_version") is None:
+        d["profile_version"] = "v1"
     return RiskProfileOut.model_validate(d)
 
 
@@ -84,6 +86,8 @@ def get_profile(db: Session = Depends(get_db), current: User = Depends(get_curre
     d = dict(profile)
     if isinstance(d.get("trigger_profile"), str):
         d["trigger_profile"] = json.loads(d["trigger_profile"])
+    if d.get("profile_version") is None:
+        d["profile_version"] = "v1"
     return RiskProfileOut.model_validate(d)
 
 

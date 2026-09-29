@@ -15,8 +15,8 @@ export function ProfilePage() {
     const load = async () => {
       try {
         const [prof, base] = await Promise.allSettled([
-          api.get<RiskProfile>("/api/assessment/profile").catch(() => null),
-          api.get<BaselineEstimates>("/api/assessment/baseline").catch(() => null),
+          api.get<RiskProfile>("/assessment/profile").catch(() => null),
+          api.get<BaselineEstimates>("/assessment/baseline").catch(() => null),
         ]);
         if (prof.status === "fulfilled") setProfile(prof.value);
         if (base.status === "fulfilled") setBaseline(base.value);

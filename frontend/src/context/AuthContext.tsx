@@ -29,7 +29,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     try {
-      const me = await api.get<User>("/api/users/me");
+      const me = await api.get<User>("/users/me");
       setUser(me);
     } catch {
       authService.clearToken();

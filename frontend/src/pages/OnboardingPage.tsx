@@ -15,7 +15,7 @@ export function OnboardingPage() {
 
   useEffect(() => {
     api
-      .get<AssessmentQuestion[]>("/api/assessment/questions")
+      .get<AssessmentQuestion[]>("/assessment/questions")
       .then((list) => setQuestions(list))
       .catch(() => setError("Could not load the assessment. Is the backend running?"));
   }, []);
@@ -27,7 +27,7 @@ export function OnboardingPage() {
       const payload = Object.entries(answers).flatMap(([qid, values]) =>
         values.map((value) => ({ question_id: Number(qid), answer: value })),
       );
-      await api.post("/api/assessment/responses", { answers: payload });
+      await api.post("/assessment/responses", { answers: payload });
       navigate("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save your profile");

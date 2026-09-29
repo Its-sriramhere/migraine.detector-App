@@ -94,7 +94,7 @@ export function DatasetsPage() {
 
   const load = useCallback(async () => {
     try {
-      setData(await api.get<DatasetsOverview>("/api/datasets"));
+      setData(await api.get<DatasetsOverview>("/datasets"));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load datasets");
     }
@@ -123,7 +123,7 @@ export function DatasetsPage() {
     setDownloading(name);
     try {
       const token = localStorage.getItem("mg_token");
-      const url = `${API_BASE}/api/datasets/download/${encodeURIComponent(name)}`;
+      const url = `${API_BASE}/datasets/download/${encodeURIComponent(name)}`;
       const resp = await fetch(url, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
@@ -167,10 +167,10 @@ export function DatasetsPage() {
           </p>
         </div>
         <div className="header-actions">
-          <button className="btn btn-secondary" disabled={busy !== ""} onClick={() => void run(() => api.post("/api/datasets/build"))}>
+          <button className="btn btn-secondary" disabled={busy !== ""} onClick={() => void run(() => api.post("/datasets/build"))}>
             <Hammer size={15} /> Rebuild calibration set
           </button>
-          <button className="btn btn-primary btn-shine" disabled={busy !== ""} onClick={() => void run(() => api.post("/api/datasets/calibrate"))}>
+          <button className="btn btn-primary btn-shine" disabled={busy !== ""} onClick={() => void run(() => api.post("/datasets/calibrate"))}>
             <RefreshCw size={15} /> Recalibrate thresholds
           </button>
         </div>
@@ -347,7 +347,7 @@ export function DatasetsPage() {
               <button
                 className="btn btn-secondary btn-sm"
                 disabled={busy !== ""}
-                onClick={() => void run(() => api.post("/api/datasets/supabase-sync"))}
+                onClick={() => void run(() => api.post("/datasets/supabase-sync"))}
               >
                 <CloudUpload size={14} /> Sync datasets to Supabase
               </button>

@@ -14,20 +14,20 @@ export function clearToken(): void {
 }
 
 export async function login(body: LoginRequest): Promise<TokenResponse> {
-  const response = await api.post<TokenResponse>("/api/auth/login", body);
+  const response = await api.post<TokenResponse>("/auth/login", body);
   storeToken(response.access_token);
   return response;
 }
 
 export async function register(body: RegisterRequest): Promise<TokenResponse> {
-  const response = await api.post<TokenResponse>("/api/auth/register", body);
+  const response = await api.post<TokenResponse>("/auth/register", body);
   storeToken(response.access_token);
   return response;
 }
 
 export async function logout(): Promise<void> {
   try {
-    await api.post("/api/auth/logout");
+    await api.post("/auth/logout");
   } finally {
     clearToken();
   }

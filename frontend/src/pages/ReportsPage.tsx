@@ -19,7 +19,7 @@ export function ReportsPage() {
 
   useEffect(() => {
     api
-      .get<ReportOverview>("/api/reports/overview")
+      .get<ReportOverview>("/reports/overview")
       .then((r) => setReport(r))
       .catch(() => setReport(zero))
       .finally(() => setLoading(false));
@@ -43,9 +43,9 @@ export function ReportsPage() {
   };
 
   const downloads = [
-    { path: "/api/reports/predictions.csv", file: "predictions.csv", label: "Predictions CSV", icon: <Download size={14} /> },
-    { path: "/api/reports/episodes.csv", file: "episodes.csv", label: "Episodes CSV", icon: <Download size={14} /> },
-    { path: "/api/dataset/export.csv", file: "migraine_dataset.csv", label: "Full dataset", icon: <Database size={14} /> },
+    { path: "/reports/predictions.csv", file: "predictions.csv", label: "Predictions CSV", icon: <Download size={14} /> },
+    { path: "/reports/episodes.csv", file: "episodes.csv", label: "Episodes CSV", icon: <Download size={14} /> },
+    { path: "/dataset/export.csv", file: "migraine_dataset.csv", label: "Full dataset", icon: <Database size={14} /> },
   ];
 
   if (loading) {

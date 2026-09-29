@@ -62,7 +62,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
 
   const refreshAlerts = useCallback(async () => {
     try {
-      const list = await api.get<Alert[]>("/api/alerts?limit=50");
+      const list = await api.get<Alert[]>("/alerts?limit=50");
       setAlerts(list);
     } catch {
       /* ignore */
@@ -72,11 +72,11 @@ export function LiveProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     if (!user) return;
     const [pred, hist, read, history, dstatus] = await Promise.allSettled([
-      api.get<Prediction>("/api/predictions/current").catch(() => null),
-      api.get<Prediction[]>("/api/predictions/history?limit=40").catch(() => [] as Prediction[]),
-      api.get<SensorReading>("/api/sensor/latest").catch(() => null),
-      api.get<SensorReading[]>("/api/sensor/history?limit=100").catch(() => [] as SensorReading[]),
-      api.get<DemoSessionStatus>("/api/demo/status").catch((): DemoSessionStatus => ({ running: false })),
+      api.get<Prediction>("/predictions/current").catch(() => null),
+      api.get<Prediction[]>("/predictions/history?limit=40").catch(() => [] as Prediction[]),
+      api.get<SensorReading>("/sensor/latest").catch(() => null),
+      api.get<SensorReading[]>("/sensor/history?limit=100").catch(() => [] as SensorReading[]),
+      api.get<DemoSessionStatus>("/demo/status").catch((): DemoSessionStatus => ({ running: false })),
     ]);
     if (pred.status === "fulfilled" && pred.value) setPrediction(pred.value);
     if (hist.status === "fulfilled" && hist.value.length) {
@@ -146,17 +146,17 @@ export function LiveProvider({ children }: { children: ReactNode }) {
   }, [user, refresh]);
 
   const acknowledgeAlert = useCallback(async (alertId: number) => {
-    await api.post(`/api/alerts/${alertId}/acknowledge`);
+    await api.post(`/alerts/${alertId}/acknowledge`);
     setAlerts((prev) => prev.map((a) => (a.id === alertId ? { ...a, acknowledged: true } : a)));
   }, []);
 
   const alertFeedback = useCallback(async (alertId: number, feedback: "yes" | "no" | "not_sure") => {
-    await api.post(`/api/alerts/${alertId}/feedback`, { feedback });
+    await api.post(`/alerts/${alertId}/feedback`, { feedback });
     setAlerts((prev) => prev.map((a) => (a.id === alertId ? { ...a, feedback, acknowledged: true } : a)));
   }, []);
 
   const sendScenario = useCallback(async (scenario: ScenarioName) => {
-    const resp = await api.post<{ reading: SensorReading; prediction: Prediction }>("/api/demo/scenario", { scenario });
+    const resp = await api.post<{ reading: SensorReading; prediction: Prediction }>("/demo/scenario", { scenario });
     if (resp?.reading?.id) setLatestReading(resp.reading);
     if (resp?.prediction) {
       setPrediction(resp.prediction);
@@ -166,7 +166,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
   }, [refreshAlerts]);
 
   const sendSensor = useCallback(async (payload: Record<string, unknown>) => {
-    const resp = await api.post<{ reading: SensorReading; prediction: Prediction }>("/api/sensor/readings", payload);
+    const resp = await api.post<{ reading: SensorReading; prediction: Prediction }>("/sensor/readings", payload);
     if (resp?.reading?.id) setLatestReading(resp.reading);
     if (resp?.prediction) {
       setPrediction(resp.prediction);
@@ -181,7 +181,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
       scenario?: string;
       reading?: SensorReading;
       prediction?: Prediction;
-    }>("/api/demo/start", { scenario, signal: values });
+    }>("/demo/start", { scenario, signal: values });
     setDemoRunning(resp?.running ?? true);
     setDemoScenario(resp?.scenario ?? scenario);
     if (resp?.reading) setLatestReading(resp.reading);
@@ -193,7 +193,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
   }, [refreshAlerts]);
 
   const stopDemo = useCallback(async () => {
-    await api.post("/api/demo/stop");
+    await api.post("/demo/stop");
     setDemoRunning(false);
     demoTimer.current && clearInterval(demoTimer.current);
     demoTimer.current = null;

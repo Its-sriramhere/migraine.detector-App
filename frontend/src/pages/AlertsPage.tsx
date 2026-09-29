@@ -39,7 +39,7 @@ export function AlertsPage() {
 
   const loadNotifications = useCallback(async () => {
     try {
-      setNotifications(await api.get<NotificationsInfo>("/api/alerts/notifications?limit=20"));
+      setNotifications(await api.get<NotificationsInfo>("/alerts/notifications?limit=20"));
     } catch {
       /* ignore */
     }

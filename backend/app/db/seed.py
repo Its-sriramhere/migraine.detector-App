@@ -138,7 +138,7 @@ def build_risk_profile(db, user_id: int, answers: dict[str, dict]) -> None:
     ).mappings().first()
     if profile is None:
         db.execute(
-            text("INSERT INTO user_risk_profiles (user_id) VALUES (:uid)"),
+            text("INSERT INTO user_risk_profiles (user_id, profile_version) VALUES (:uid, 'v1')"),
             {"uid": user_id},
         )
         profile = dict(db.execute(

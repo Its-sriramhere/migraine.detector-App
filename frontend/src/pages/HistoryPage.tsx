@@ -30,7 +30,7 @@ export function HistoryPage() {
 
   const load = async () => {
     try {
-      setEpisodes(await api.get<MigraineEpisode[]>("/api/migraine/history"));
+      setEpisodes(await api.get<MigraineEpisode[]>("/migraine/history"));
     } catch {
       /* ignore */
     }
@@ -48,7 +48,7 @@ export function HistoryPage() {
         trigger: trigger || undefined,
         notes: notes || undefined,
       };
-      await api.post("/api/migraine", body);
+      await api.post("/migraine", body);
       setTrigger("");
       setNotes("");
       setSelectedSymptoms([]);
