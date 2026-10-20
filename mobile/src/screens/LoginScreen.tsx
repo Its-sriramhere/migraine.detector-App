@@ -8,6 +8,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
 import { colors } from "../constants/colors";
@@ -22,6 +23,7 @@ import { validateLogin } from "../utils/validation";
 type Props = NativeStackScreenProps<AuthStackParamList, "Login">;
 
 export function LoginScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
   const { refreshUser } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -51,7 +53,7 @@ export function LoginScreen({ navigation }: Props) {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={styles.wrap}
+      style={[styles.wrap, { paddingTop: insets.top + spacing.base }]}
     >
       <Text style={styles.title}>Welcome back</Text>
       <Text style={styles.sub}>Sign in to continue monitoring.</Text>

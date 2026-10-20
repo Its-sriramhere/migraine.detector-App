@@ -1,4 +1,5 @@
 import { ScrollView, StyleSheet, Text } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LoadingState } from "../components/LoadingState";
 import { EmptyState, ErrorState } from "../components/States";
 import { colors } from "../constants/colors";
@@ -7,6 +8,7 @@ import { typography } from "../constants/typography";
 import { useRisk } from "../hooks/useRisk";
 
 export function HistoryScreen() {
+  const insets = useSafeAreaInsets();
   const { history, loading, error, reload } = useRisk(true);
 
   if (loading) return <LoadingState message="Loading history…" />;
@@ -21,7 +23,13 @@ export function HistoryScreen() {
     );
 
   return (
-    <ScrollView style={styles.wrap} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.wrap}
+      contentContainerStyle={[
+        styles.content,
+        { paddingTop: insets.top + spacing.base },
+      ]}
+    >
       <Text style={styles.title}>Risk History</Text>
       {history.map((h) => (
         <Text key={h.id} style={styles.row}>

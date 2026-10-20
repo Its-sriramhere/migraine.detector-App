@@ -1,5 +1,6 @@
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "../components/Button";
 import { LoadingState } from "../components/LoadingState";
 import { RiskCard } from "../components/RiskCard";
@@ -20,6 +21,7 @@ function contributionLabel(c: number): string {
 }
 
 export function RiskDetailsScreen({ navigation, route }: Props) {
+  const insets = useSafeAreaInsets();
   const { prediction, history, loading, error, reload } = useRisk(true);
   const currentId = route.params?.predictionId ?? prediction?.id ?? null;
   const explanation = useExplanation(currentId);
@@ -40,7 +42,13 @@ export function RiskDetailsScreen({ navigation, route }: Props) {
   });
 
   return (
-    <ScrollView style={styles.wrap} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.wrap}
+      contentContainerStyle={[
+        styles.content,
+        { paddingTop: insets.top + spacing.base },
+      ]}
+    >
       <RiskCard
         score={prediction.risk_score}
         level={prediction.risk_level}

@@ -264,11 +264,12 @@ def latest_prediction(db: Session, user_id: int) -> Optional[Prediction]:
         db.execute(
             select(Prediction)
             .where(Prediction.user_id == user_id)
+            .options(joinedload(Prediction.features))
             .order_by(Prediction.timestamp.desc())
             .limit(1)
         )
-        .options(joinedload(Prediction.features))
         .scalars()
+        .unique()
         .first()
     )
 
@@ -278,10 +279,11 @@ def get_predictions(db: Session, user_id: int, limit: int = 50) -> list[Predicti
         db.execute(
             select(Prediction)
             .where(Prediction.user_id == user_id)
+            .options(joinedload(Prediction.features))
             .order_by(Prediction.timestamp.desc())
             .limit(limit)
         )
-        .options(joinedload(Prediction.features))
         .scalars()
+        .unique()
         .all()
     )

@@ -2,6 +2,7 @@ import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import type { CompositeScreenProps } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "../components/Button";
 import { DemoBanner } from "../components/DemoBanner";
 import { LoadingState } from "../components/LoadingState";
@@ -29,13 +30,20 @@ type Props = CompositeScreenProps<
 export function HomeScreen({ navigation }: Props) {
   const { user } = useAuth();
   const online = useNetwork();
+  const insets = useSafeAreaInsets();
   const { mode, prediction, latestReading, devices, loading, error, refresh } =
     useSensorData("live");
 
   const firstName = user?.name?.split(" ")[0] ?? "there";
 
   return (
-    <ScrollView style={styles.wrap} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.wrap}
+      contentContainerStyle={[
+        styles.content,
+        { paddingTop: insets.top + spacing.base },
+      ]}
+    >
       <Text style={styles.hello}>
         {greetingFor()}, {firstName}
       </Text>

@@ -1,4 +1,5 @@
 import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { colors } from "../constants/colors";
@@ -7,10 +8,17 @@ import { typography } from "../constants/typography";
 import { useAuth } from "../hooks/useAuth";
 
 export function ProfileScreen() {
+  const insets = useSafeAreaInsets();
   const { user, signOut } = useAuth();
 
   return (
-    <ScrollView style={styles.wrap} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.wrap}
+      contentContainerStyle={[
+        styles.content,
+        { paddingTop: insets.top + spacing.base },
+      ]}
+    >
       <Text style={styles.title}>Profile</Text>
       <Card>
         <Text style={styles.name}>{user?.name ?? "—"}</Text>

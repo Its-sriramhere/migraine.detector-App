@@ -1,6 +1,7 @@
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "../components/Button";
 import { LoadingState } from "../components/LoadingState";
 import { ErrorState } from "../components/States";
@@ -23,6 +24,7 @@ const SECTIONS = [
 ];
 
 export function AssessmentScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
   const [questions, setQuestions] = useState<AssessmentQuestion[]>([]);
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
@@ -78,7 +80,13 @@ export function AssessmentScreen({ navigation }: Props) {
     );
 
   return (
-    <ScrollView style={styles.wrap} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.wrap}
+      contentContainerStyle={[
+        styles.content,
+        { paddingTop: insets.top + spacing.base },
+      ]}
+    >
       <Text style={styles.title}>Health Assessment</Text>
       <Text style={styles.step}>
         Step 1 of {SECTIONS.length} — answer to build your baseline

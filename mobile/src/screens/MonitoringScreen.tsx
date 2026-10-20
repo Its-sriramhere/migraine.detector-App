@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DemoBanner } from "../components/DemoBanner";
 import { LoadingState } from "../components/LoadingState";
 import { RiskCard } from "../components/RiskCard";
@@ -15,6 +16,7 @@ import * as sensorService from "../services/sensorService";
 import type { ScenarioName } from "../types";
 
 export function MonitoringScreen() {
+  const insets = useSafeAreaInsets();
   const online = useNetwork();
   const {
     mode,
@@ -61,7 +63,13 @@ export function MonitoringScreen() {
       : "○ No device";
 
   return (
-    <ScrollView style={styles.wrap} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.wrap}
+      contentContainerStyle={[
+        styles.content,
+        { paddingTop: insets.top + spacing.base },
+      ]}
+    >
       <Text style={styles.title}>Live Monitoring</Text>
       <Text style={styles.status}>{connectedLabel}</Text>
 

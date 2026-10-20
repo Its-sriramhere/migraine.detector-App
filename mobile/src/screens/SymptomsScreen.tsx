@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
 import { LoadingState } from "../components/LoadingState";
@@ -31,6 +32,7 @@ const TRIGGERS = [
 ];
 
 export function SymptomsScreen() {
+  const insets = useSafeAreaInsets();
   const [episodes, setEpisodes] = useState<MigraineEpisode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -86,7 +88,13 @@ export function SymptomsScreen() {
   if (loading) return <LoadingState message="Loading symptoms…" />;
 
   return (
-    <ScrollView style={styles.wrap} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.wrap}
+      contentContainerStyle={[
+        styles.content,
+        { paddingTop: insets.top + spacing.base },
+      ]}
+    >
       <Text style={styles.title}>Symptom Logging</Text>
       <Text style={styles.sub}>Record what you feel. Uses /api/migraine.</Text>
       <View style={styles.chips}>

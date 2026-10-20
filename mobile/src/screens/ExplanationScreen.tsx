@@ -1,5 +1,6 @@
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LoadingState } from "../components/LoadingState";
 import { ErrorState } from "../components/States";
 import { colors } from "../constants/colors";
@@ -11,6 +12,7 @@ import type { RootStackParamList } from "../navigation/types";
 type Props = NativeStackScreenProps<RootStackParamList, "Explanation">;
 
 export function ExplanationScreen({ route }: Props) {
+  const insets = useSafeAreaInsets();
   const { data, loading, error } = useExplanation(route.params.predictionId);
 
   if (loading) return <LoadingState message="Loading explanation…" />;
@@ -22,7 +24,13 @@ export function ExplanationScreen({ route }: Props) {
   );
 
   return (
-    <ScrollView style={styles.wrap} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.wrap}
+      contentContainerStyle={[
+        styles.content,
+        { paddingTop: insets.top + spacing.base },
+      ]}
+    >
       <Text style={styles.title}>Model explanation</Text>
       <Text style={styles.sub}>
         Predicted risk {Math.round(data.risk_score)}% (
