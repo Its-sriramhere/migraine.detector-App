@@ -1,6 +1,5 @@
 import type {
   DemoSessionStatus,
-  Device,
   ReadingWithPrediction,
   ScenarioName,
   SensorReading,
@@ -13,14 +12,6 @@ export function getLatestReading() {
 
 export function getSensorHistory(limit = 100) {
   return api.get<SensorReading[]>(`/sensor/history?limit=${limit}`);
-}
-
-export function getDevices() {
-  return api.get<Device[]>("/devices");
-}
-
-export function getDeviceStatus(deviceId: number) {
-  return api.get<Device>(`/devices/${deviceId}/status`);
 }
 
 export function getDemoStatus() {

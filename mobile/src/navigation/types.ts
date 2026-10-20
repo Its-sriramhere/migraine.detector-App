@@ -23,13 +23,15 @@ export type SensorMetric =
 export type RootStackParamList = {
   Auth: undefined;
   Main: undefined;
+  Onboarding: undefined;
   Assessment: undefined;
   RiskDetails: { predictionId?: number };
   Explanation: { predictionId: number };
   SensorDetails: { metric: SensorMetric };
   Alerts: undefined;
   Demo: undefined;
-  Device: undefined;
+  Watch: undefined;
+  Recommendations: undefined;
   Settings: undefined;
   Reports: undefined;
   Datasets: undefined;

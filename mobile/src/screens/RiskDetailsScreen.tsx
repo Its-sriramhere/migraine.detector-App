@@ -1,27 +1,22 @@
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Check, Info } from "lucide-react-native";
+import { AppHeader } from "../components/AppHeader";
+import { ArcGauge } from "../components/ArcGauge";
 import { AdviceList } from "../components/AdviceList";
-import { Button } from "../components/Button";
-import { Card } from "../components/Card";
 import { LoadingState } from "../components/LoadingState";
-import { RiskBadge } from "../components/RiskBadge";
-import { RiskGauge } from "../components/RiskGauge";
+import { RiskHistoryChart } from "../components/RiskHistoryChart";
+import { StatusCard } from "../components/StatusCard";
 import { ErrorState } from "../components/States";
 import { colors } from "../constants/colors";
+import { radius } from "../constants/radius";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
 import { useExplanation, useRisk } from "../hooks/useRisk";
 import type { RootStackParamList } from "../navigation/types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "RiskDetails">;
-
-function contributionLabel(c: number): string {
-  const a = Math.abs(c);
-  if (a >= 30) return "High contribution";
-  if (a >= 12) return "Moderate contribution";
-  return "Lower contribution";
-}
 
 export function RiskDetailsScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
@@ -36,95 +31,87 @@ export function RiskDetailsScreen({ navigation, route }: Props) {
   if (!prediction)
     return <ErrorState message="No predictions yet." onRetry={reload} />;
 
+  const level = prediction.risk_level;
   const raw = (explanation.data?.features ?? prediction.features).slice(0, 6);
   const factors = raw.map((f, i) => {
     if ("feature_name" in f) {
-      return {
-        key: String(f.id ?? i),
-        name: f.feature_name,
-        value: f.feature_value,
-        contribution: f.contribution,
-      };
+      return { key: String(f.id ?? i), name: f.feature_name, contribution: f.contribution };
     }
-    return {
-      key: `${f.name}-${i}`,
-      name: f.name,
-      value: f.value,
-      contribution: f.contribution,
-    };
+    return { key: `${f.name}-${i}`, name: f.name, contribution: f.contribution };
   });
+
+  const stable = level === "low";
 
   return (
     <ScrollView
       style={styles.wrap}
       contentContainerStyle={[
         styles.content,
-        { paddingTop: insets.top + spacing.base },
+        { paddingTop: insets.top + spacing.sm },
       ]}
     >
-      <Card>
-        <Text style={styles.cardTitle}>Predicted Migraine Risk</Text>
-        <View style={styles.gaugeWrap}>
-          <RiskGauge
-            score={prediction.risk_score}
-            level={prediction.risk_level}
-            label={prediction.prediction_window ? `next ${prediction.prediction_window} min` : undefined}
-          />
-        </View>
-        <View style={styles.metaRow}>
-          <RiskBadge level={prediction.risk_level} small />
-          <Text style={styles.meta}>Model {prediction.model_version}</Text>
-          <Text style={styles.meta}>Source {prediction.source}</Text>
-        </View>
-        <AdviceList advice={prediction.advice} />
-      </Card>
-
-      <Text style={styles.h}>Why is my risk changing?</Text>
-      <Text style={styles.sub}>
-        Contributing factors from the model explanation. These describe model
-        influence, not medical causation.
-      </Text>
-      {factors.length === 0 ? (
-        <Card>
-          <Text style={styles.sub}>
-            No factor deviated from your personal baseline in this prediction.
-          </Text>
-        </Card>
-      ) : (
-        factors.map((f) => (
-          <Card key={f.key}>
-            <View style={styles.factorHead}>
-              <Text style={styles.name}>{f.name}</Text>
-              <Text style={styles.contrib}>
-                {contributionLabel(f.contribution)}
-              </Text>
-            </View>
-            <Text style={styles.value}>
-              {f.value !== undefined ? `Value ${f.value} · ` : ""}
-              contribution {f.contribution.toFixed(2)}
-            </Text>
-          </Card>
-        ))
-      )}
-
-      <Button
-        title="View detailed explanation"
-        onPress={() =>
-          navigation.navigate("Explanation", { predictionId: prediction.id })
+      <AppHeader
+        title="Migraine Risk"
+        onBack={() => navigation.goBack()}
+        right={
+          <Info color={colors.textSecondary} size={20} />
         }
       />
 
-      {history.length > 0 ? (
-        <>
-          <Text style={styles.h}>Recent history</Text>
-          {history.slice(0, 5).map((h) => (
-            <Text key={h.id} style={styles.hist}>
-              {h.timestamp ?? ""} — {h.risk_level.toUpperCase()} (
-              {Math.round(h.risk_score)}%)
-            </Text>
+      <View style={styles.gaugeWrap}>
+        <ArcGauge
+          score={prediction.risk_score}
+          level={level}
+          caption="Estimated risk over the next 24h"
+        />
+      </View>
+
+      <View style={styles.explain}>
+        <Text style={styles.explainText}>
+          Your wearable signals currently suggest a{" "}
+          <Text style={styles.explainStrong}>
+            {stable ? "low" : level === "moderate" ? "moderate" : "high"}{" "}
+            likelihood
+          </Text>{" "}
+          of a migraine episode.
+        </Text>
+      </View>
+
+      {factors.length > 0 ? (
+        <View style={styles.factors}>
+          {factors.map((f) => (
+            <View key={f.key} style={styles.factorRow}>
+              <Text style={styles.factorName}>{f.name}</Text>
+              <Text style={styles.factorValue}>
+                {f.contribution >= 0 ? "+" : ""}
+                {f.contribution.toFixed(1)}
+              </Text>
+            </View>
           ))}
-        </>
+        </View>
       ) : null}
+
+      <Text style={styles.section}>7-day Risk Trend</Text>
+      <RiskHistoryChart predictions={history} />
+
+      <AdviceList advice={prediction.advice} title="Recommended next steps" />
+
+      <StatusCard
+        icon={<Check size={18} color={colors.low} strokeWidth={3} />}
+        title={
+          stable
+            ? "All signals are currently stable."
+            : "Some signals are outside your normal range."
+        }
+        body={
+          stable
+            ? "Keep your healthy routine going."
+            : "Review your recommendations and stay hydrated."
+        }
+        background={stable ? colors.lowPale : colors.moderatePale}
+        iconBackground={stable ? colors.lowBackground : colors.moderateBackground}
+        iconColor={stable ? colors.low : colors.moderate}
+      />
     </ScrollView>
   );
 }
@@ -132,24 +119,21 @@ export function RiskDetailsScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.base, gap: spacing.base },
-  cardTitle: { ...typography.h3, color: colors.textPrimary },
-  gaugeWrap: { alignItems: "center", marginVertical: spacing.base },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: spacing.md,
+  gaugeWrap: { alignItems: "center", marginVertical: spacing.sm },
+  explain: {
+    backgroundColor: colors.surfaceSecondary,
+    borderRadius: radius.pill,
+    padding: spacing.base,
   },
-  meta: { ...typography.caption, color: colors.textTertiary },
-  h: { ...typography.h2, color: colors.textPrimary },
-  sub: { color: colors.textSecondary },
-  factorHead: {
+  explainText: { ...typography.caption, color: colors.textSecondary },
+  explainStrong: { color: colors.textPrimary, fontWeight: "600" },
+  factors: { gap: 4 },
+  factorRow: {
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
+    paddingVertical: 4,
   },
-  name: { fontWeight: "600", color: colors.textPrimary },
-  contrib: { color: colors.textSecondary, fontSize: 13 },
-  value: { ...typography.caption, color: colors.textTertiary, marginTop: 2 },
-  hist: { color: colors.textSecondary, fontSize: 13 },
+  factorName: { ...typography.bodySmall, color: colors.textSecondary },
+  factorValue: { ...typography.bodySmall, color: colors.textPrimary, fontWeight: "600" },
+  section: { ...typography.section, color: colors.textPrimary },
 });

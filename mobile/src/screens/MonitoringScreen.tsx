@@ -1,86 +1,131 @@
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import type { CompositeScreenProps } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Button } from "../components/Button";
+import { ChevronLeft, ChevronRight, Droplets, HeartPulse, Moon, Wind } from "lucide-react-native";
+import { BarChart } from "react-native-gifted-charts";
+import { BigMetricCard } from "../components/BigMetricCard";
 import { Card } from "../components/Card";
-import { DemoBanner } from "../components/DemoBanner";
 import { LoadingState } from "../components/LoadingState";
-import { MetricChart } from "../components/MetricChart";
-import { PiStatus } from "../components/PiStatus";
-import { RiskGauge } from "../components/RiskGauge";
-import { SensorGrid } from "../components/SensorGrid";
+import { SegmentedTabs } from "../components/SegmentedTabs";
 import { ErrorState, OfflineBanner } from "../components/States";
 import { colors } from "../constants/colors";
+import { radius } from "../constants/radius";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
 import { useAuth } from "../hooks/useAuth";
 import { useNetwork } from "../hooks/useNetwork";
-import { useSensorData, type SensorMode } from "../hooks/useSensorData";
-import { timeAgo } from "../utils/formatting";
-import * as sensorService from "../services/sensorService";
-import type { ScenarioName } from "../types";
+import { useSensorData } from "../hooks/useSensorData";
+import type { BaselineEstimates } from "../types";
+import * as userService from "../services/userService";
 import type {
   MainTabParamList,
   RootStackParamList,
 } from "../navigation/types";
+import { formatSleep, formatTimestamp } from "../utils/formatting";
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<MainTabParamList, "Monitoring">,
   NativeStackScreenProps<RootStackParamList>
 >;
 
+type MetricKey = "sleep" | "hrv" | "bp" | "spo2";
+
+const TABS: { label: string; value: MetricKey }[] = [
+  { label: "Sleep", value: "sleep" },
+  { label: "HRV", value: "hrv" },
+  { label: "Blood Pressure", value: "bp" },
+  { label: "SpO₂", value: "spo2" },
+];
+
+const METRIC_COLOR: Record<MetricKey, string> = {
+  sleep: colors.lavenderStrong,
+  hrv: colors.accent,
+  bp: colors.primary,
+  spo2: colors.low,
+};
+
 export function MonitoringScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const online = useNetwork();
+  const [metric, setMetric] = useState<MetricKey>("sleep");
+  const [baseline, setBaseline] = useState<BaselineEstimates | null>(null);
   const {
     mode,
     prediction,
     latestReading,
     sensorHistory,
-    devices,
-    connected,
     loading,
     error,
     lastSync,
     refresh,
-    setMode,
   } = useSensorData(user?.id ?? null, "live");
-  const [demoBusy, setDemoBusy] = useState(false);
-  const [scenario, setScenario] = useState<ScenarioName>("normal");
 
-  const switchMode = async (m: SensorMode) => {
-    setMode(m);
-    if (m === "demo") {
-      setDemoBusy(true);
-      try {
-        await sensorService.startDemo(scenario);
-      } catch {
-        // surfaced on next refresh
-      } finally {
-        setDemoBusy(false);
-        void refresh();
-      }
-    } else {
-      try {
-        await sensorService.stopDemo();
-      } catch {
-        // ignore
-      } finally {
-        void refresh();
-      }
-    }
+  useEffect(() => {
+    userService.getBaseline().then(setBaseline).catch(() => undefined);
+  }, []);
+
+  const pick = (key: MetricKey) => {
+    const list = sensorHistory.map((r) => {
+      if (key === "hrv") return r.hrv ?? null;
+      if (key === "bp") return r.systolic_bp ?? null;
+      if (key === "spo2") return r.spo2 ?? null;
+      return r.activity ?? null;
+    });
+    return list.filter((v): v is number => v !== null).slice(-24);
   };
 
-  const pi = devices[0];
-  const connectedLabel = pi
-    ? `● ${pi.status}`
-    : loading
-      ? "● Checking…"
-      : "○ No device";
+  const series = pick(metric);
+  const chartData = series.map((v) => ({ value: v }));
+
+  const value =
+    metric === "sleep"
+      ? formatSleep(
+          baseline?.sleep_hours !== undefined
+            ? baseline.sleep_hours * 60
+            : undefined,
+        )
+      : metric === "hrv"
+        ? latestReading?.hrv !== undefined
+          ? `${Math.round(latestReading.hrv)} ms`
+          : "—"
+        : metric === "bp"
+          ? latestReading?.systolic_bp && latestReading?.diastolic_bp
+            ? `${latestReading.systolic_bp}/${latestReading.diastolic_bp}`
+            : "—"
+          : latestReading?.spo2 !== undefined
+            ? `${Math.round(latestReading.spo2)}%`
+            : "—";
+
+  const goal =
+    metric === "sleep"
+      ? "Goal: 7–9 hours"
+      : metric === "hrv"
+        ? "Compared with your personal baseline"
+        : metric === "bp"
+          ? "mmHg · compared with your baseline"
+          : "Compared with your personal baseline";
+
+  const icon =
+    metric === "sleep" ? (
+      <Moon size={22} color={colors.lavenderStrong} />
+    ) : metric === "hrv" ? (
+      <HeartPulse size={22} color={colors.high} />
+    ) : metric === "bp" ? (
+      <Wind size={22} color={colors.primary} />
+    ) : (
+      <Droplets size={22} color={colors.accent} />
+    );
+
+  const status =
+    metric === "sleep"
+      ? { label: "TRACKED", text: colors.primaryDark, background: colors.primaryLight }
+      : metric === "spo2"
+        ? { label: "NORMAL", text: colors.lowDark, background: colors.lowBackground }
+        : { label: "LIVE", text: colors.primaryDark, background: colors.primaryLight };
 
   return (
     <ScrollView
@@ -90,150 +135,128 @@ export function MonitoringScreen({ navigation }: Props) {
         { paddingTop: insets.top + spacing.base },
       ]}
     >
-      <Text style={styles.title}>Live Monitoring</Text>
-      <Text style={styles.status}>
-        {connectedLabel} · {connected ? "socket live" : "polling"}
-      </Text>
+      <Text style={styles.title}>Health Metrics</Text>
 
-      {online === false ? <OfflineBanner lastSync={lastSync} /> : null}
-      {mode === "demo" ? <DemoBanner /> : null}
-
-      <View style={styles.toggle}>
-        {(["live", "demo"] as SensorMode[]).map((m) => (
-          <Pressable
-            key={m}
-            accessibilityRole="radio"
-            accessibilityState={{ selected: mode === m }}
-            onPress={() => void switchMode(m)}
-            style={[styles.pill, mode === m && styles.pillActive]}
-          >
-            <Text style={[styles.pillText, mode === m && styles.pillTextA]}>
-              {m === "live" ? "○ Live Raspberry Pi" : "● Demo Mode"}
-            </Text>
-          </Pressable>
-        ))}
+      <View style={styles.dateRow}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Previous day" style={styles.dateArrow}>
+          <ChevronLeft color={colors.textTertiary} size={18} />
+        </Pressable>
+        <View style={styles.datePill}>
+          <Text style={styles.dateText}>
+            {new Date().toLocaleDateString(undefined, {
+              weekday: "short",
+              month: "short",
+              day: "numeric",
+            })
+              .toUpperCase()
+              .replace(",", " ·")}
+          </Text>
+        </View>
+        <Pressable accessibilityRole="button" accessibilityLabel="Next day" style={styles.dateArrow}>
+          <ChevronRight color={colors.textTertiary} size={18} />
+        </Pressable>
       </View>
 
-      <Button
-        title="Open Demo Lab"
-        variant="secondary"
-        onPress={() => navigation.navigate("Demo")}
-      />
+      <SegmentedTabs options={TABS} value={metric} onChange={setMetric} />
 
-      {mode === "demo" ? (
-        <View style={styles.scenarios}>
-          {(["normal", "moderate", "high"] as ScenarioName[]).map((s) => (
-            <Pressable
-              key={s}
-              onPress={() => {
-                setScenario(s);
-                setDemoBusy(true);
-                sensorService
-                  .sendScenario(s)
-                  .then(() => refresh())
-                  .finally(() => setDemoBusy(false));
-              }}
-              style={[styles.pill, scenario === s && styles.pillActive]}
-            >
-              <Text style={[styles.pillText, scenario === s && styles.pillTextA]}>
-                {s.toUpperCase()}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-      ) : null}
+      {online === false ? <OfflineBanner lastSync={lastSync} /> : null}
 
-      {loading && !prediction ? (
-        <LoadingState message="Loading monitoring data…" />
-      ) : error && !prediction ? (
+      {loading && !latestReading ? (
+        <LoadingState message="Loading metrics…" />
+      ) : error && !latestReading ? (
         <ErrorState message={error} onRetry={refresh} />
-      ) : prediction ? (
-        <Card>
-          <Text style={styles.cardTitle}>Predicted Migraine Risk</Text>
-          <View style={styles.gaugeWrap}>
-            <RiskGauge
-              score={prediction.risk_score}
-              level={prediction.risk_level}
-            />
-          </View>
-          <Text style={styles.sub}>
-            {prediction.timestamp
-              ? `Based on measurements ${timeAgo(prediction.timestamp)}`
-              : "Based on latest measurements"}
-          </Text>
-        </Card>
-      ) : null}
+      ) : (
+        <>
+          <BigMetricCard
+            icon={icon}
+            title={
+              metric === "sleep"
+                ? "Sleep"
+                : metric === "hrv"
+                  ? "HRV"
+                  : metric === "bp"
+                    ? "Blood Pressure"
+                    : "SpO₂"
+            }
+            value={value}
+            statusLabel={status.label}
+            statusText={status.text}
+            statusBackground={status.background}
+            goal={goal}
+          >
+            {chartData.length > 1 ? (
+              <View style={styles.chart}>
+                <BarChart
+                  data={chartData}
+                  barWidth={7}
+                  spacing={Math.max(6, 250 / chartData.length)}
+                  height={110}
+                  color={METRIC_COLOR[metric]}
+                  roundedTop
+                  initialSpacing={4}
+                  yAxisThickness={0}
+                  xAxisThickness={0}
+                  noOfSections={4}
+                  rulesColor={colors.border}
+                  rulesType="solid"
+                />
+              </View>
+            ) : (
+              <Text style={styles.noChart}>
+                {metric === "sleep"
+                  ? "Sleep history appears once your wearable reports it."
+                  : "Not enough readings yet to draw a trend."}
+              </Text>
+            )}
+          </BigMetricCard>
 
-      <MetricChart metric="heart_rate" readings={sensorHistory} />
-      <MetricChart metric="hrv" readings={sensorHistory} />
-      <MetricChart metric="temperature" readings={sensorHistory} />
-      <MetricChart metric="spo2" readings={sensorHistory} />
+          <Card>
+            <Text style={styles.cardTitle}>Recent readings</Text>
+            {sensorHistory.length === 0 ? (
+              <Text style={styles.noChart}>No readings yet.</Text>
+            ) : (
+              sensorHistory
+                .slice(-6)
+                .reverse()
+                .map((r) => (
+                  <View key={r.id} style={styles.readingRow}>
+                    <Text style={styles.readingTime}>
+                      {formatTimestamp(r.timestamp)}
+                    </Text>
+                    <Text style={styles.readingValue}>
+                      {r.heart_rate !== undefined ? `${r.heart_rate} BPM` : "—"}
+                      {r.hrv !== undefined ? ` · ${Math.round(r.hrv)} ms` : ""}
+                      {r.spo2 !== undefined ? ` · ${Math.round(r.spo2)}%` : ""}
+                    </Text>
+                  </View>
+                ))
+            )}
+          </Card>
 
-      {latestReading ? (
-        <SensorGrid
-          items={[
-            {
-              icon: "❤️",
-              name: "Heart Rate",
-              value: String(latestReading.heart_rate ?? "—"),
-              unit: "BPM",
-              status: mode === "demo" ? "demo" : "live",
-              updatedAt: latestReading.timestamp,
-            },
-            {
-              icon: "💓",
-              name: "HRV",
-              value: String(latestReading.hrv ?? "—"),
-              unit: "ms",
-              status: mode === "demo" ? "demo" : "live",
-              updatedAt: latestReading.timestamp,
-            },
-            {
-              icon: "🩸",
-              name: "SpO₂",
-              value: String(latestReading.spo2 ?? "—"),
-              unit: "%",
-              status: mode === "demo" ? "demo" : "live",
-              updatedAt: latestReading.timestamp,
-            },
-            {
-              icon: "🌡️",
-              name: "Temperature",
-              value: String(latestReading.temperature ?? "—"),
-              unit: "°C",
-              status: mode === "demo" ? "demo" : "live",
-              updatedAt: latestReading.timestamp,
-            },
-            {
-              icon: "💉",
-              name: "Blood Pressure",
-              value:
-                latestReading.systolic_bp && latestReading.diastolic_bp
-                  ? `${latestReading.systolic_bp}/${latestReading.diastolic_bp}`
-                  : "—",
-              unit: "mmHg",
-              status: mode === "demo" ? "demo" : "live",
-              updatedAt: latestReading.timestamp,
-            },
-            {
-              icon: "🏃",
-              name: "Motion",
-              value: String(latestReading.activity ?? "—"),
-              unit: "g",
-              status: mode === "demo" ? "demo" : "live",
-              updatedAt: latestReading.timestamp,
-            },
-          ]}
-        />
-      ) : null}
+          {prediction ? (
+            <Card>
+              <Text style={styles.cardTitle}>Predicted migraine risk</Text>
+              <Text style={styles.riskValue}>
+                {Math.round(prediction.risk_score)}% ·{" "}
+                {prediction.risk_level.toUpperCase()}
+              </Text>
+              <Text style={styles.noChart}>
+                {mode === "demo"
+                  ? "DEMO DATA — simulated measurements."
+                  : "Live wearable signals."}
+              </Text>
+            </Card>
+          ) : null}
+        </>
+      )}
 
-      <PiStatus devices={devices} />
-
-      <Text style={styles.updated}>
-        {lastSync
-          ? `Updated ${timeAgo(lastSync)}${demoBusy ? " — switching…" : ""}`
-          : ""}
-      </Text>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => navigation.navigate("Watch")}
+        style={styles.watchLink}
+      >
+        <Text style={styles.watchLinkText}>Wearable connection →</Text>
+      </Pressable>
     </ScrollView>
   );
 }
@@ -241,27 +264,40 @@ export function MonitoringScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.base, gap: spacing.base },
-  title: { ...typography.h1, color: colors.textPrimary },
-  status: { color: colors.textSecondary },
-  cardTitle: { ...typography.h3, color: colors.textPrimary },
-  gaugeWrap: { alignItems: "center", marginVertical: spacing.base },
-  sub: { ...typography.bodySmall, color: colors.textSecondary },
-  toggle: { flexDirection: "row", gap: spacing.sm },
-  scenarios: { flexDirection: "row", gap: spacing.sm },
-  pill: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    minHeight: 44,
+  title: { ...typography.title, color: colors.textPrimary },
+  dateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.md,
+  },
+  dateArrow: {
+    width: 32,
+    height: 32,
+    alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.surface,
   },
-  pillActive: {
-    backgroundColor: colors.primaryLight,
-    borderColor: colors.primary,
+  datePill: {
+    flex: 1,
+    backgroundColor: colors.surfaceSecondary,
+    borderRadius: radius.full,
+    paddingVertical: 10,
+    alignItems: "center",
   },
-  pillText: { color: colors.textSecondary, fontWeight: "600" },
-  pillTextA: { color: colors.primaryDark },
-  updated: { color: colors.textTertiary, fontSize: 12 },
+  dateText: { ...typography.bodyMedium, color: colors.textPrimary },
+  chart: { marginTop: spacing.md },
+  noChart: { ...typography.bodySmall, color: colors.textTertiary, marginTop: spacing.sm },
+  cardTitle: { ...typography.section, color: colors.textPrimary, marginBottom: spacing.sm },
+  readingRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 6,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  readingTime: { ...typography.micro, color: colors.textSecondary },
+  readingValue: { ...typography.micro, color: colors.textPrimary, fontWeight: "600" },
+  riskValue: { ...typography.metric, color: colors.textPrimary },
+  watchLink: { alignSelf: "center", padding: spacing.sm },
+  watchLinkText: { ...typography.caption, color: colors.primary, fontWeight: "600" },
 });

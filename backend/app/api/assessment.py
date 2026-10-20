@@ -99,13 +99,15 @@ def get_baseline(db: Session = Depends(get_db), current: User = Depends(get_curr
         text("SELECT * FROM user_risk_profiles WHERE user_id = :uid"),
         {"uid": current.id},
     ).mappings().first()
-    d = dict(profile)
+    # A user may not have completed the assessment yet — fall back to an
+    # empty profile instead of raising (dict(None) used to 500 here).
+    d = dict(profile) if profile else {}
     if isinstance(d.get("trigger_profile"), str):
         d["trigger_profile"] = json.loads(d["trigger_profile"])
     baseline = baseline_for(db, current.id, d)
     return BaselineEstimates(
         heart_rate_low=round(baseline.heart_rate - 4, 1),
         heart_rate_high=round(baseline.heart_rate + 4, 1),
-        sleep_hours=getattr(profile, "sleep_hours", None) if profile else None,
+        sleep_hours=d.get("sleep_hours"),
         resting_note="Learned from your physiological readings.",
     )

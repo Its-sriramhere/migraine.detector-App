@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { colors } from "../constants/colors";
 import { radius } from "../constants/radius";
+import { typography } from "../constants/typography";
 
 interface Props {
   title: string;
@@ -32,10 +33,11 @@ export function Button({
       accessibilityRole="button"
       onPress={onPress}
       disabled={disabled || loading}
-      style={[
+      style={({ pressed }) => [
         styles.base,
         isPrimary ? styles.primary : styles.secondary,
         (disabled || loading) && styles.dim,
+        pressed && styles.pressed,
         style,
       ]}
     >
@@ -52,20 +54,18 @@ export function Button({
 
 const styles = StyleSheet.create({
   base: {
-    minHeight: 50,
-    borderRadius: radius.md,
+    minHeight: 52,
+    borderRadius: radius.full,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 16,
-  },
-  primary: { backgroundColor: colors.primary },
-  secondary: {
-    backgroundColor: colors.surface,
+    paddingHorizontal: 20,
     borderWidth: 1,
-    borderColor: colors.border,
   },
-  dim: { opacity: 0.6 },
-  text: { fontSize: 16, fontWeight: "600" },
-  textP: { color: "#fff" },
+  primary: { backgroundColor: colors.primary, borderColor: "transparent" },
+  secondary: { backgroundColor: colors.surface, borderColor: colors.border },
+  dim: { opacity: 0.55 },
+  pressed: { opacity: 0.85 },
+  text: { ...typography.bodyMedium, fontWeight: "600" },
+  textP: { color: "#FFFFFF" },
   textS: { color: colors.primary },
 });

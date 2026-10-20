@@ -3,7 +3,6 @@ import { config } from "../constants/config";
 import type {
   Alert,
   AlertFeedback,
-  Device,
   Prediction,
   SensorReading,
   WsEvent,
@@ -23,7 +22,6 @@ interface SensorState {
   latestReading: SensorReading | null;
   sensorHistory: SensorReading[];
   predictionHistory: Prediction[];
-  devices: Device[];
   alerts: Alert[];
   connected: boolean;
   loading: boolean;
@@ -46,7 +44,6 @@ export function useSensorData(
   );
   const [sensorHistory, setSensorHistory] = useState<SensorReading[]>([]);
   const [predictionHistory, setPredictionHistory] = useState<Prediction[]>([]);
-  const [devices, setDevices] = useState<Device[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -59,15 +56,13 @@ export function useSensorData(
     setLoading(true);
     setError(null);
     try {
-      const [pred, hist, reading, readings, devs, alertList] =
-        await Promise.all([
-          riskService.getCurrentPrediction().catch(() => null),
-          riskService.getPredictionHistory(40).catch(() => [] as Prediction[]),
-          sensorService.getLatestReading().catch(() => null),
-          sensorService.getSensorHistory(100).catch(() => [] as SensorReading[]),
-          sensorService.getDevices().catch(() => [] as Device[]),
-          alertService.getAlerts(50).catch(() => [] as Alert[]),
-        ]);
+      const [pred, hist, reading, readings, alertList] = await Promise.all([
+        riskService.getCurrentPrediction().catch(() => null),
+        riskService.getPredictionHistory(40).catch(() => [] as Prediction[]),
+        sensorService.getLatestReading().catch(() => null),
+        sensorService.getSensorHistory(100).catch(() => [] as SensorReading[]),
+        alertService.getAlerts(50).catch(() => [] as Alert[]),
+      ]);
       if (pred) {
         setPrediction(pred);
         lastLevel.current = pred.risk_level;
@@ -75,7 +70,6 @@ export function useSensorData(
       setPredictionHistory(hist);
       if (reading) setLatestReading(reading);
       setSensorHistory(readings);
-      setDevices(devs);
       setAlerts(alertList);
       setLastSync(new Date().toISOString());
     } catch (e) {
@@ -170,7 +164,6 @@ export function useSensorData(
     latestReading,
     sensorHistory,
     predictionHistory,
-    devices,
     alerts,
     connected,
     loading,

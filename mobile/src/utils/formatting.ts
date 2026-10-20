@@ -36,3 +36,26 @@ export function timeAgo(iso?: string | null): string {
   if (h < 24) return `${h} hr ago`;
   return d.toLocaleString();
 }
+
+/** Plain-language risk summary used on the home card. Never a diagnosis. */
+export function riskSentence(level: string, score: number): string {
+  const pct = Math.round(score);
+  switch (level) {
+    case "high":
+      return `Elevated risk signals detected (${pct}%). Review your recent signals and your care plan.`;
+    case "moderate":
+      return `Some risk signals are above your normal range (${pct}%). Keep your routine steady and rest well.`;
+    default:
+      return "No significant risk signal detected in the next 24 hours.";
+  }
+}
+
+/** Formats minutes of sleep as "7h 20m". */
+export function formatSleep(minutes?: number | null): string {
+  if (!minutes || minutes <= 0) return "—";
+  const h = Math.floor(minutes / 60);
+  const m = Math.round(minutes % 60);
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}

@@ -175,8 +175,8 @@ export function DemoScreen(_: Props) {
     >
       <Text style={styles.title}>Demo Lab</Text>
       <Text style={styles.sub}>
-        Presets and custom readings run through the same pipeline as the
-        Raspberry Pi: preprocessing → features → model → explanation → risk.
+        Presets and custom readings run through the same pipeline as a paired
+        wearable: preprocessing → features → model → explanation → risk.
       </Text>
       <DemoBanner />
 

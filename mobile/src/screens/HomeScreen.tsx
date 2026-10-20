@@ -1,30 +1,37 @@
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import type { CompositeScreenProps } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { AdviceList } from "../components/AdviceList";
-import { AlertCard } from "../components/AlertCard";
-import { Button } from "../components/Button";
-import { Card } from "../components/Card";
-import { DemoBanner } from "../components/DemoBanner";
+import {
+  ArrowUpRight,
+  Check,
+  Droplets,
+  HeartPulse,
+  Moon,
+  Wind,
+} from "lucide-react-native";
+import { IconCircle } from "../components/IconCircle";
 import { LoadingState } from "../components/LoadingState";
-import { PiStatus } from "../components/PiStatus";
-import { RiskGauge } from "../components/RiskGauge";
-import { SensorGrid } from "../components/SensorGrid";
+import { MetricCard } from "../components/MetricCard";
+import { RiskSummaryCard } from "../components/RiskSummaryCard";
 import { EmptyState, ErrorState, OfflineBanner } from "../components/States";
 import { colors } from "../constants/colors";
+import { radius } from "../constants/radius";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
 import { useAuth } from "../hooks/useAuth";
 import { useNetwork } from "../hooks/useNetwork";
 import { useSensorData } from "../hooks/useSensorData";
+import type { BaselineEstimates } from "../types";
+import * as userService from "../services/userService";
 import type {
   MainTabParamList,
   RootStackParamList,
 } from "../navigation/types";
 import { greetingFor } from "../utils/date";
-import { timeAgo } from "../utils/formatting";
+import { formatSleep, riskSentence, timeAgo } from "../utils/formatting";
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<MainTabParamList, "Home">,
@@ -35,24 +42,24 @@ export function HomeScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const online = useNetwork();
+  const [baseline, setBaseline] = useState<BaselineEstimates | null>(null);
   const {
     mode,
     prediction,
     latestReading,
-    sensorHistory,
-    devices,
-    alerts,
-    connected,
     loading,
     error,
     lastSync,
     refresh,
-    acknowledgeAlert,
-    sendFeedback,
   } = useSensorData(user?.id ?? null, "live");
 
+  useEffect(() => {
+    userService.getBaseline().then(setBaseline).catch(() => undefined);
+  }, []);
+
   const firstName = user?.name?.split(" ")[0] ?? "there";
-  const statusColor = connected ? colors.low : colors.textTertiary;
+  const level = prediction?.risk_level ?? "low";
+  const score = prediction?.risk_score ?? 0;
 
   return (
     <ScrollView
@@ -62,159 +69,143 @@ export function HomeScreen({ navigation }: Props) {
         { paddingTop: insets.top + spacing.base },
       ]}
     >
-      <View style={styles.headRow}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.hello}>
-            {greetingFor()}, {firstName}
-          </Text>
-          <Text style={styles.conn} accessibilityLabel={connected ? "Live connection active" : "Live connection inactive"}>
-            {connected ? "● Live connection" : "○ Polling fallback"}
-          </Text>
+      <View style={styles.head}>
+        <View style={styles.headText}>
+          <Text style={styles.greeting}>{greetingFor()},</Text>
+          <Text style={styles.name}>{firstName}</Text>
         </View>
-        <View style={[styles.connDot, { backgroundColor: statusColor }]} />
+        <IconCircle size={42} background={colors.lowBackground} color={colors.low}>
+          <Check size={18} color={colors.low} strokeWidth={3} />
+        </IconCircle>
       </View>
 
       {online === false ? <OfflineBanner lastSync={lastSync} /> : null}
-      {mode === "demo" ? <DemoBanner /> : null}
 
       {loading && !prediction ? (
         <LoadingState message="Loading monitoring data…" />
       ) : error && !prediction ? (
         <ErrorState message={error} onRetry={refresh} />
       ) : prediction ? (
-        <Card>
-          <Text style={styles.cardTitle}>Predicted Migraine Risk</Text>
-          <View style={styles.gaugeWrap}>
-            <RiskGauge
-              score={prediction.risk_score}
-              level={prediction.risk_level}
-              label={
-                prediction.prediction_window
-                  ? `next ${prediction.prediction_window} min`
-                  : undefined
-              }
-            />
-          </View>
-          <Text style={styles.sub}>
-            {prediction.timestamp
-              ? `Based on measurements ${timeAgo(prediction.timestamp)}`
-              : "Based on latest measurements"}
-          </Text>
-          <AdviceList advice={prediction.advice} />
-          <Button
-            title="View Explanation"
-            onPress={() =>
-              navigation.navigate("RiskDetails", { predictionId: prediction.id })
-            }
+        <Pressable
+          accessibilityRole="button"
+          onPress={() =>
+            navigation.navigate("RiskDetails", { predictionId: prediction.id })
+          }
+        >
+          <RiskSummaryCard
+            icon={<Check size={20} color={colors.low} strokeWidth={3} />}
+            level={level}
+            sentence={riskSentence(level, score)}
           />
-        </Card>
+        </Pressable>
       ) : (
         <EmptyState
           title="No monitoring data yet"
-          message="Start monitoring to see your predicted risk here."
-          actionLabel="Open Monitoring"
-          onAction={() => navigation.navigate("Monitoring" as never)}
+          message="Pair your wearable to start seeing your predicted risk here."
         />
       )}
 
-      {alerts.length > 0 ? (
-        <>
-          <View style={styles.sectionHead}>
-            <Text style={styles.section}>Recent alerts</Text>
-            <Button
-              title="See all"
-              variant="secondary"
-              onPress={() => navigation.navigate("Alerts")}
-            />
-          </View>
-          {alerts.slice(0, 3).map((a) => (
-            <AlertCard
-              key={a.id}
-              alert={a}
-              onAcknowledge={acknowledgeAlert}
-              onFeedback={sendFeedback}
-            />
-          ))}
-        </>
-      ) : null}
-
-      {latestReading ? (
-        <SensorGrid
-          items={[
-            {
-              icon: "❤️",
-              name: "Heart Rate",
-              value: String(latestReading.heart_rate ?? "—"),
-              unit: "BPM",
-              status: mode === "demo" ? "demo" : "live",
-              updatedAt: latestReading.timestamp,
-              onPress: () =>
-                navigation.navigate("SensorDetails", { metric: "heart_rate" }),
-            },
-            {
-              icon: "💓",
-              name: "HRV",
-              value: String(latestReading.hrv ?? "—"),
-              unit: "ms",
-              status: mode === "demo" ? "demo" : "live",
-              updatedAt: latestReading.timestamp,
-              onPress: () =>
-                navigation.navigate("SensorDetails", { metric: "hrv" }),
-            },
-            {
-              icon: "🩸",
-              name: "SpO₂",
-              value: String(latestReading.spo2 ?? "—"),
-              unit: "%",
-              status: mode === "demo" ? "demo" : "live",
-              updatedAt: latestReading.timestamp,
-              onPress: () =>
-                navigation.navigate("SensorDetails", { metric: "spo2" }),
-            },
-            {
-              icon: "🌡️",
-              name: "Temperature",
-              value: String(latestReading.temperature ?? "—"),
-              unit: "°C",
-              status: mode === "demo" ? "demo" : "live",
-              updatedAt: latestReading.timestamp,
-              onPress: () =>
-                navigation.navigate("SensorDetails", { metric: "temperature" }),
-            },
-            {
-              icon: "💉",
-              name: "Blood Pressure",
-              value:
-                latestReading.systolic_bp && latestReading.diastolic_bp
-                  ? `${latestReading.systolic_bp}/${latestReading.diastolic_bp}`
-                  : "—",
-              unit: "mmHg",
-              status: mode === "demo" ? "demo" : "live",
-              updatedAt: latestReading.timestamp,
-            },
-            {
-              icon: "🏃",
-              name: "Motion",
-              value: String(latestReading.activity ?? "—"),
-              unit: "g",
-              status: mode === "demo" ? "demo" : "live",
-              updatedAt: latestReading.timestamp,
-            },
-          ]}
-        />
-      ) : null}
-
-      <PiStatus devices={devices} />
-
-      <View style={styles.actions}>
-        <Button
-          title="View Monitoring"
-          onPress={() => navigation.navigate("Monitoring" as never)}
-        />
+      <Text style={styles.section}>Today's Health</Text>
+      <View style={styles.grid}>
+        <View style={styles.cell}>
+          <MetricCard
+            icon={<Moon size={15} color={colors.lavenderStrong} />}
+            iconBackground={colors.lavender}
+            iconColor={colors.lavenderStrong}
+            label="Sleep"
+            value={formatSleep(
+              baseline?.sleep_hours !== undefined
+                ? baseline.sleep_hours * 60
+                : undefined,
+            )}
+            sublabel={
+              baseline?.sleep_hours ? "Within sleep goal" : "Set your baseline"
+            }
+            sublabelColor={
+              baseline?.sleep_hours ? colors.lowDark : colors.textTertiary
+            }
+          />
+        </View>
+        <View style={styles.cell}>
+          <MetricCard
+            icon={<HeartPulse size={15} color={colors.high} />}
+            iconBackground={colors.pinkTint}
+            iconColor={colors.high}
+            label="HRV"
+            value={
+              latestReading?.hrv !== undefined
+                ? `${Math.round(latestReading.hrv)} ms`
+                : "—"
+            }
+            sublabel="Your normal range"
+            sublabelColor={colors.textSecondary}
+          />
+        </View>
+        <View style={styles.cell}>
+          <MetricCard
+            icon={<ArrowUpRight size={15} color={colors.primary} />}
+            iconBackground={colors.blueTint}
+            iconColor={colors.primary}
+            label="Blood Pressure"
+            value={
+              latestReading?.systolic_bp && latestReading?.diastolic_bp
+                ? `${latestReading.systolic_bp}/${latestReading.diastolic_bp}`
+                : "—"
+            }
+            sublabel="mmHg"
+            sublabelColor={colors.textSecondary}
+          />
+        </View>
+        <View style={styles.cell}>
+          <MetricCard
+            icon={<Droplets size={15} color={colors.accent} />}
+            iconBackground={colors.accentPale}
+            iconColor={colors.accent}
+            label="SpO₂"
+            value={
+              latestReading?.spo2 !== undefined
+                ? `${Math.round(latestReading.spo2)}%`
+                : "—"
+            }
+            sublabel="Normal"
+            sublabelColor={colors.textSecondary}
+          />
+        </View>
       </View>
+
+      <View style={styles.trend}>
+        <IconCircle size={40} background={colors.blueTint} color={colors.primary}>
+          <Wind size={18} color={colors.primary} />
+        </IconCircle>
+        <View style={styles.trendText}>
+          <Text style={styles.trendTitle}>Your Trend</Text>
+          <Text style={styles.trendBody}>
+            {prediction
+              ? `Health signals have been ${level === "low" ? "stable" : "shifting"}.`
+              : "Health signals have been stable."}
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => navigation.navigate("History" as never)}
+            style={styles.trendLink}
+          >
+            <Text style={styles.trendLinkText}>View analytics →</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => navigation.navigate("Alerts")}
+            style={styles.trendLink}
+          >
+            <Text style={styles.trendLinkText}>Insights & alerts →</Text>
+          </Pressable>
+        </View>
+      </View>
+
       <Text style={styles.footnote}>
-        {sensorHistory.length} readings in the loaded window · research
-        prototype, not a medical device.
+        {prediction
+          ? `Updated ${timeAgo(prediction.timestamp)} · research prototype, not a medical device.`
+          : "Research prototype, not a medical device."}
+        {mode === "demo" ? " · DEMO DATA" : ""}
       </Text>
     </ScrollView>
   );
@@ -223,19 +214,27 @@ export function HomeScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.base, gap: spacing.base },
-  headRow: { flexDirection: "row", alignItems: "center" },
-  hello: { ...typography.h1, color: colors.textPrimary },
-  conn: { ...typography.caption, color: colors.textSecondary },
-  connDot: { width: 10, height: 10, borderRadius: 5 },
-  cardTitle: { ...typography.h3, color: colors.textPrimary },
-  gaugeWrap: { alignItems: "center", marginVertical: spacing.base },
-  sub: { ...typography.bodySmall, color: colors.textSecondary, marginBottom: spacing.md },
-  sectionHead: {
+  head: { flexDirection: "row", alignItems: "center" },
+  headText: { flex: 1 },
+  greeting: { ...typography.body, color: colors.textSecondary },
+  name: { ...typography.greeting, color: colors.textPrimary },
+  section: { ...typography.section, color: colors.textPrimary, marginTop: spacing.sm },
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md },
+  cell: { flexBasis: "47%", flexGrow: 1, minWidth: 150 },
+  trend: {
     flexDirection: "row",
+    gap: spacing.md,
     alignItems: "center",
-    justifyContent: "space-between",
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: radius.card,
+    padding: spacing.base,
   },
-  section: { ...typography.h2, color: colors.textPrimary },
-  actions: { paddingBottom: spacing.sm },
+  trendText: { flex: 1, gap: 2 },
+  trendTitle: { ...typography.rowTitle, color: colors.textPrimary },
+  trendBody: { ...typography.caption, color: colors.textSecondary },
+  trendLink: { marginTop: 2, minHeight: 24, justifyContent: "center" },
+  trendLinkText: { ...typography.caption, color: colors.primary, fontWeight: "600" },
   footnote: { ...typography.caption, color: colors.textTertiary, textAlign: "center" },
 });

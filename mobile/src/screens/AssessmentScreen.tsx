@@ -2,9 +2,9 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { LoadingState } from "../components/LoadingState";
+import { PrimaryButton } from "../components/PrimaryButton";
 import { ProgressBar } from "../components/ProgressBar";
 import { ErrorState } from "../components/States";
 import { colors } from "../constants/colors";
@@ -150,7 +150,7 @@ export function AssessmentScreen({ navigation }: Props) {
       />
 
       {current.map((q) => (
-        <Card key={q.id}>
+        <Card key={q.id} style={styles.questionCard}>
           <Text style={styles.eyebrow}>
             {q.question_type === "multi" ? "SELECT ALL THAT APPLY" : "SELECT ONE"}
           </Text>
@@ -161,7 +161,9 @@ export function AssessmentScreen({ navigation }: Props) {
               return (
                 <Pressable
                   key={o}
-                  accessibilityRole={q.question_type === "multi" ? "checkbox" : "radio"}
+                  accessibilityRole={
+                    q.question_type === "multi" ? "checkbox" : "radio"
+                  }
                   accessibilityState={{ checked: active }}
                   onPress={() => toggle(q, o)}
                   style={[styles.option, active && styles.optionActive]}
@@ -182,16 +184,18 @@ export function AssessmentScreen({ navigation }: Props) {
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <View style={styles.actions}>
-        <Button
+        <PrimaryButton
           title="Back"
           variant="secondary"
           onPress={() => setStep((s) => Math.max(0, s - 1))}
+          style={styles.action}
         />
-        <Button
+        <PrimaryButton
           title={isLast ? "Build My Profile" : "Continue"}
           onPress={() => (isLast ? void submit() : setStep((s) => s + 1))}
           loading={busy}
           disabled={!complete}
+          style={styles.action}
         />
       </View>
     </ScrollView>
@@ -201,20 +205,20 @@ export function AssessmentScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.base, gap: spacing.base },
-  title: { ...typography.h1, color: colors.textPrimary },
+  title: { ...typography.title, color: colors.textPrimary },
   step: { ...typography.bodySmall, color: colors.textSecondary },
+  questionCard: { gap: 4 },
   eyebrow: {
-    ...typography.caption,
+    ...typography.microStrong,
     color: colors.textTertiary,
     letterSpacing: 0.6,
-    marginBottom: 4,
   },
-  question: { ...typography.h3, color: colors.textPrimary, marginBottom: spacing.md },
-  options: { gap: spacing.sm },
+  question: { ...typography.rowTitle, color: colors.textPrimary },
+  options: { gap: spacing.sm, marginTop: spacing.sm },
   option: {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.control,
     paddingHorizontal: spacing.base,
     minHeight: 48,
     justifyContent: "center",
@@ -228,4 +232,5 @@ const styles = StyleSheet.create({
   optionTextActive: { color: colors.primaryDark, fontWeight: "600" },
   error: { ...typography.bodySmall, color: colors.error },
   actions: { flexDirection: "row", gap: spacing.sm },
+  action: { flex: 1 },
 });

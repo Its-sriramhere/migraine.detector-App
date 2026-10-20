@@ -4,10 +4,21 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Button } from "../components/Button";
+import {
+  Bell,
+  Database,
+  FileText,
+  Heart,
+  HelpCircle,
+  User,
+} from "lucide-react-native";
 import { Card } from "../components/Card";
-import { Chip } from "../components/Chip";
+import { IconCircle } from "../components/IconCircle";
+import { MenuRow } from "../components/MenuRow";
+import { PageTitle } from "../components/PageTitle";
+import { PrimaryButton } from "../components/PrimaryButton";
 import { colors } from "../constants/colors";
+import { radius } from "../constants/radius";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
 import { useAuth } from "../hooks/useAuth";
@@ -23,17 +34,6 @@ type Props = CompositeScreenProps<
   NativeStackScreenProps<RootStackParamList>
 >;
 
-function Row({ label, value }: { label: string; value?: string | number }) {
-  return (
-    <View style={styles.row}>
-      <Text style={styles.rowKey}>{label}</Text>
-      <Text style={styles.rowValue}>
-        {value === undefined || value === "" ? "—" : String(value)}
-      </Text>
-    </View>
-  );
-}
-
 export function ProfileScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { user, signOut } = useAuth();
@@ -45,6 +45,8 @@ export function ProfileScreen({ navigation }: Props) {
     userService.getBaseline().then(setBaseline).catch(() => undefined);
   }, []);
 
+  const initial = (user?.name?.[0] ?? "?").toUpperCase();
+
   return (
     <ScrollView
       style={styles.wrap}
@@ -53,106 +55,84 @@ export function ProfileScreen({ navigation }: Props) {
         { paddingTop: insets.top + spacing.base },
       ]}
     >
-      <Text style={styles.title}>Profile</Text>
-      <Card>
-        <Text style={styles.name}>{user?.name ?? "—"}</Text>
-        <Text style={styles.sub}>{user?.email ?? "—"}</Text>
-        <Text style={styles.sub}>
-          Consent: {user?.consent_given ? "given" : "not given"}
-        </Text>
+      <PageTitle title="Profile & Settings" />
+
+      <Card style={styles.profileCard}>
+        <IconCircle size={92} background={colors.blueTint} color={colors.primary}>
+          <Text style={styles.avatar}>{initial}</Text>
+        </IconCircle>
+        <View style={styles.profileText}>
+          <Text style={styles.profileName}>{user?.name ?? "—"}</Text>
+          <Text style={styles.profileSub}>Wearable health profile</Text>
+        </View>
       </Card>
 
-      <Text style={styles.section}>Personalization profile</Text>
-      {profile ? (
+      <MenuRow
+        icon={<User size={20} color={colors.primary} />}
+        title="Personal information"
+        subtitle="Name and health preferences"
+        onPress={() => navigation.navigate("Assessment")}
+      />
+      <MenuRow
+        icon={<FileText size={20} color={colors.primary} />}
+        title="Migraine history"
+        subtitle="Log episodes and identify patterns"
+        onPress={() => navigation.navigate("Symptoms" as never)}
+      />
+      <MenuRow
+        icon={<Heart size={20} color={colors.primary} />}
+        title="Medication notes"
+        subtitle="Personal care information"
+        onPress={() => navigation.navigate("Settings")}
+      />
+      <MenuRow
+        icon={<Bell size={20} color={colors.primary} />}
+        title="Notifications"
+        subtitle="Customize reminders and alerts"
+        onPress={() => navigation.navigate("Settings")}
+      />
+      <MenuRow
+        icon={<Database size={20} color={colors.primary} />}
+        title="Data & privacy"
+        subtitle="Control permissions and exports"
+        onPress={() => navigation.navigate("Reports")}
+      />
+      <MenuRow
+        icon={<HelpCircle size={20} color={colors.primary} />}
+        title="Help and support"
+        subtitle="FAQs and contact details"
+        onPress={() => navigation.navigate("Settings")}
+      />
+
+      {profile || baseline ? (
         <Card>
-          <Row label="Migraine history score" value={profile.migraine_history_score} />
-          <Row label="Sleep profile" value={profile.sleep_profile} />
-          <Row label="Stress profile" value={profile.stress_profile} />
-          <Row label="Activity profile" value={profile.activity_profile} />
-          <Row label="Hydration profile" value={profile.hydration_profile} />
-          <Row label="Caffeine profile" value={profile.caffeine_profile} />
-          <Row label="Resting HR" value={profile.resting_hr} />
-          <Row label="Profile version" value={profile.profile_version} />
-          {profile.trigger_profile?.length ? (
-            <>
-              <Text style={styles.triggerLabel}>Known triggers</Text>
-              <View style={styles.chips}>
-                {profile.trigger_profile.map((t) => (
-                  <Chip key={t} label={t} selected />
-                ))}
-              </View>
-            </>
+          <Text style={styles.cardTitle}>Your baseline</Text>
+          {baseline ? (
+            <Text style={styles.cardLine}>
+              Resting heart rate {baseline.heart_rate_low}–
+              {baseline.heart_rate_high} BPM
+            </Text>
+          ) : null}
+          {profile?.resting_hr ? (
+            <Text style={styles.cardLine}>
+              Resting heart rate {profile.resting_hr} BPM
+            </Text>
+          ) : null}
+          {profile?.sleep_profile ? (
+            <Text style={styles.cardLine}>Sleep: {profile.sleep_profile}</Text>
+          ) : null}
+          {profile?.stress_profile ? (
+            <Text style={styles.cardLine}>Stress: {profile.stress_profile}</Text>
+          ) : null}
+          {profile?.trigger_profile?.length ? (
+            <Text style={styles.cardLine}>
+              Triggers: {profile.trigger_profile.join(", ")}
+            </Text>
           ) : null}
         </Card>
-      ) : (
-        <Card>
-          <Text style={styles.sub}>
-            No personal baseline yet. Take the assessment so the model can
-            compare your readings against your own normal.
-          </Text>
-          <Button
-            title="Take the assessment"
-            onPress={() => navigation.navigate("Assessment")}
-          />
-        </Card>
-      )}
+      ) : null}
 
-      <Text style={styles.section}>Personal baseline</Text>
-      {baseline ? (
-        <Card>
-          <Row
-            label="Resting heart rate"
-            value={`${baseline.heart_rate_low}–${baseline.heart_rate_high} BPM`}
-          />
-          <Row label="Sleep hours" value={baseline.sleep_hours} />
-          <Text style={styles.note}>{baseline.resting_note}</Text>
-        </Card>
-      ) : (
-        <Card>
-          <Text style={styles.sub}>Baseline unavailable.</Text>
-        </Card>
-      )}
-
-      <Text style={styles.section}>Manage</Text>
-      <Card>
-        <View style={styles.linkRow}>
-          <Button
-            title="Take / retake assessment"
-            variant="secondary"
-            onPress={() => navigation.navigate("Assessment")}
-          />
-        </View>
-        <View style={styles.linkRow}>
-          <Button
-            title="Raspberry Pi devices"
-            variant="secondary"
-            onPress={() => navigation.navigate("Device")}
-          />
-        </View>
-        <View style={styles.linkRow}>
-          <Button
-            title="Reports"
-            variant="secondary"
-            onPress={() => navigation.navigate("Reports")}
-          />
-        </View>
-        <View style={styles.linkRow}>
-          <Button
-            title="Datasets & thresholds"
-            variant="secondary"
-            onPress={() => navigation.navigate("Datasets")}
-          />
-        </View>
-        <View style={styles.linkRow}>
-          <Button
-            title="Settings"
-            variant="secondary"
-            onPress={() => navigation.navigate("Settings")}
-          />
-        </View>
-      </Card>
-
-      <Button title="Sign Out" variant="secondary" onPress={() => void signOut()} />
+      <PrimaryButton title="Sign out" variant="danger" onPress={() => void signOut()} />
       <Text style={styles.note}>
         Research prototype — predictions are risk estimates, not medical
         diagnoses.
@@ -163,24 +143,18 @@ export function ProfileScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.base, gap: spacing.base },
-  title: { ...typography.h1, color: colors.textPrimary },
-  section: { ...typography.h2, color: colors.textPrimary },
-  name: { ...typography.h2, color: colors.textPrimary },
-  sub: { ...typography.bodySmall, color: colors.textSecondary },
-  row: {
+  content: { padding: spacing.base, gap: spacing.md },
+  profileCard: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 3,
+    alignItems: "center",
+    gap: spacing.base,
+    borderRadius: radius.card,
   },
-  rowKey: { ...typography.bodySmall, color: colors.textSecondary },
-  rowValue: { ...typography.bodySmall, color: colors.textPrimary, fontWeight: "600" },
-  triggerLabel: {
-    ...typography.caption,
-    color: colors.textTertiary,
-    marginTop: spacing.sm,
-  },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
-  linkRow: { marginBottom: spacing.sm },
+  avatar: { fontSize: 34, fontWeight: "700", color: colors.primary },
+  profileText: { flex: 1, gap: 1 },
+  profileName: { ...typography.headerTitle, color: colors.textPrimary },
+  profileSub: { ...typography.bodySmall, color: colors.textSecondary },
+  cardTitle: { ...typography.section, color: colors.textPrimary },
+  cardLine: { ...typography.bodySmall, color: colors.textSecondary },
   note: { ...typography.caption, color: colors.textTertiary, textAlign: "center" },
 });
