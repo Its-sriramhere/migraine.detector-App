@@ -12,6 +12,7 @@ import {
   HelpCircle,
   User,
 } from "lucide-react-native";
+import { TabBackButton } from "../components/TabBackButton";
 import { AppLogo } from "../components/AppLogo";
 import { Card } from "../components/Card";
 import { IconCircle } from "../components/IconCircle";
@@ -62,6 +63,7 @@ export function ProfileScreen({ navigation }: Props) {
           <Text style={styles.brandName}>Migraine Detector</Text>
           <Text style={styles.brandSub}>Wearable-powered health companion</Text>
         </View>
+        <TabBackButton onPress={() => navigation.navigate("Home")} />
       </View>
 
       <PageTitle title="Profile & Settings" />

@@ -6,6 +6,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ChevronLeft, ChevronRight, Droplets, HeartPulse, Moon, Wind } from "lucide-react-native";
 import { BarChart } from "react-native-gifted-charts";
+import { TabBackButton } from "../components/TabBackButton";
 import { BigMetricCard } from "../components/BigMetricCard";
 import { Card } from "../components/Card";
 import { LoadingState } from "../components/LoadingState";
@@ -136,7 +137,10 @@ export function MonitoringScreen({ navigation }: Props) {
         { paddingTop: insets.top + spacing.base },
       ]}
     >
-      <Text style={styles.title}>Health Metrics</Text>
+      <View style={styles.titleRow}>
+        <TabBackButton onPress={() => navigation.navigate("Home")} />
+        <Text style={styles.title}>Health Metrics</Text>
+      </View>
 
       <View style={styles.dateRow}>
         <Pressable accessibilityRole="button" accessibilityLabel="Previous day" style={styles.dateArrow}>
@@ -265,6 +269,7 @@ export function MonitoringScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.base, gap: spacing.base },
+  titleRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   title: { ...typography.title, color: colors.textPrimary },
   dateRow: {
     flexDirection: "row",

@@ -2,6 +2,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { AppHeader } from "../components/AppHeader";
 import { Card } from "../components/Card";
 import { LoadingState } from "../components/LoadingState";
 import { PrimaryButton } from "../components/PrimaryButton";
@@ -139,7 +140,12 @@ export function AssessmentScreen({ navigation }: Props) {
         { paddingTop: insets.top + spacing.base },
       ]}
     >
-      <Text style={styles.title}>Health Assessment</Text>
+      <AppHeader
+        title="Health Assessment"
+        layout="left"
+        titleStyle={styles.title}
+        onBack={() => navigation.goBack()}
+      />
       <Text style={styles.step}>
         Step {step + 1} of {SECTIONS.length} — {SECTIONS[step].title}
       </Text>

@@ -17,6 +17,8 @@ import { themeNew } from "../constants/colors";
 import { radius } from "../constants/radius";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
+import { TypingDots } from "./TypingDots";
+import { MiraMark } from "./MiraMark";
 import type {
   ChatFeature,
   ChatGuide,
@@ -27,6 +29,9 @@ import { getChatGuide, sendChat } from "../services/chatService";
 
 const GREETING =
   "Hi! I'm Mira 👋 I can explain app features, guide you through every screen, or share general migraine wellness tips.";
+
+/** Shortest time the typing indicator is shown before the reply appears. */
+const MIN_THINKING_MS = 900;
 
 export interface MiraChatOverlayProps {
   visible: boolean;
@@ -79,8 +84,18 @@ export function MiraChatOverlay({
     setError(null);
     setBusy(true);
 
+    // The guide answers cached questions instantly. Hold the reply back for a
+    // beat so the typing indicator is seen and the answer feels considered.
+    const startedAt = Date.now();
+
     try {
       const reply: ChatReply = await sendChat(next, { topicId });
+      const elapsed = Date.now() - startedAt;
+      if (elapsed < MIN_THINKING_MS) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, MIN_THINKING_MS - elapsed),
+        );
+      }
       setMessages((current) => [
         ...current,
         {
@@ -126,7 +141,7 @@ export function MiraChatOverlay({
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.avatar}>
-              <Sparkle size={22} color="#FFFFFF" strokeWidth={1.8} />
+              <MiraMark size={44} />
             </View>
             <View style={styles.heading}>
               <Text style={styles.headingTitle}>Mira Assistant</Text>
@@ -233,7 +248,7 @@ export function MiraChatOverlay({
                 >
                   {m.role === "assistant" ? (
                     <View style={styles.miniAvatar}>
-                      <Sparkle size={14} color={themeNew.primary} strokeWidth={1.8} />
+                      <MiraMark size={26} />
                     </View>
                   ) : null}
                   <View style={styles.bubbleWrap}>
@@ -271,9 +286,11 @@ export function MiraChatOverlay({
             {busy ? (
               <View style={styles.message}>
                 <View style={styles.miniAvatar}>
-                  <Sparkle size={14} color={themeNew.primary} strokeWidth={1.8} />
+                  <MiraMark size={26} />
                 </View>
-                <Text style={styles.thinking}>Mira is typing…</Text>
+                <View style={styles.typingBubble}>
+                  <TypingDots />
+                </View>
               </View>
             ) : null}
             {error ? (
@@ -570,6 +587,14 @@ const styles = StyleSheet.create({
   thinking: {
     ...typography.caption,
     color: themeNew.miraDate,
+  },
+  typingBubble: {
+    backgroundColor: themeNew.miraBubble,
+    borderRadius: 15,
+    borderBottomLeftRadius: 5,
+    paddingHorizontal: 13,
+    paddingVertical: 8,
+    alignSelf: "flex-start",
   },
   error: {
     backgroundColor: "#FFF1F1",

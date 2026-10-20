@@ -3,6 +3,7 @@ import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { useEffect, useState } from "react";
 import { Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { TabBackButton } from "../components/TabBackButton";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { Chip } from "../components/Chip";
@@ -50,7 +51,7 @@ const SEVERITIES = [
 
 type Severity = (typeof SEVERITIES)[number]["value"];
 
-export function SymptomsScreen(_: Props) {
+export function SymptomsScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const [episodes, setEpisodes] = useState<MigraineEpisode[]>([]);
   const [loading, setLoading] = useState(true);
@@ -117,7 +118,10 @@ export function SymptomsScreen(_: Props) {
         { paddingTop: insets.top + spacing.base },
       ]}
     >
-      <Text style={styles.title}>Symptom Logging</Text>
+      <View style={styles.titleRow}>
+        <TabBackButton onPress={() => navigation.navigate("Home")} />
+        <Text style={styles.title}>Symptom Logging</Text>
+      </View>
       <Text style={styles.sub}>
         Record what you feel. Episodes are the ground truth used to evaluate
         how well the model predicted your risk.
@@ -215,6 +219,7 @@ export function SymptomsScreen(_: Props) {
 const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.base, gap: spacing.base },
+  titleRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   title: { ...typography.h1, color: colors.textPrimary },
   sub: { ...typography.bodySmall, color: colors.textSecondary },
   section: { ...typography.h2, color: colors.textPrimary },
