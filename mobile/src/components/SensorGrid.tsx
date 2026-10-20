@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { colors } from "../constants/colors";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
@@ -12,6 +12,7 @@ interface Item {
   unit?: string;
   status: "live" | "demo" | "stale";
   updatedAt?: string;
+  onPress?: () => void;
 }
 
 function statusLabel(s: Item["status"]): string {
@@ -21,8 +22,8 @@ function statusLabel(s: Item["status"]): string {
 }
 
 export function SensorCard({ item }: { item: Item }) {
-  return (
-    <Card>
+  const body = (
+    <>
       <Text style={styles.name}>
         {item.icon} {item.name}
       </Text>
@@ -34,7 +35,17 @@ export function SensorCard({ item }: { item: Item }) {
       {item.updatedAt ? (
         <Text style={styles.updated}>{timeAgo(item.updatedAt)}</Text>
       ) : null}
-    </Card>
+    </>
+  );
+  if (!item.onPress) return <Card>{body}</Card>;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={item.onPress}
+      style={({ pressed }) => (pressed ? { opacity: 0.7 } : undefined)}
+    >
+      <Card>{body}</Card>
+    </Pressable>
   );
 }
 

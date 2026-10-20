@@ -13,11 +13,24 @@ export type MainTabParamList = {
   Profile: undefined;
 };
 
+export type SensorMetric =
+  | "heart_rate"
+  | "hrv"
+  | "temperature"
+  | "spo2"
+  | "activity";
+
 export type RootStackParamList = {
   Auth: undefined;
   Main: undefined;
   Assessment: undefined;
   RiskDetails: { predictionId?: number };
   Explanation: { predictionId: number };
-  SensorDetails: { name: string };
+  SensorDetails: { metric: SensorMetric };
+  Alerts: undefined;
+  Demo: undefined;
+  Device: undefined;
+  Settings: undefined;
+  Reports: undefined;
+  Datasets: undefined;
 };

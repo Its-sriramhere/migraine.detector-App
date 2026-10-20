@@ -23,8 +23,12 @@ engine = create_engine(
     settings.DATABASE_URL,
     connect_args=connect_args,
     poolclass=QueuePool,
-    pool_size=1,
-    max_overflow=0,
+    # A single connection starves any request that opens a second session
+    # (it then waits for pool_timeout). Keep a small pool plus overflow and
+    # fail fast instead of hanging.
+    pool_size=5,
+    max_overflow=10,
+    pool_timeout=10,
     pool_recycle=300,
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

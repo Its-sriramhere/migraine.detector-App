@@ -31,6 +31,24 @@ export function sendScenario(scenario: ScenarioName) {
   return api.post<ReadingWithPrediction>("/demo/scenario", { scenario });
 }
 
+export interface DemoSignal {
+  heart_rate?: number;
+  hrv?: number;
+  systolic_bp?: number;
+  diastolic_bp?: number;
+  spo2?: number;
+  temperature?: number;
+  activity?: number;
+  signal_quality?: number;
+}
+
+export function sendDemoSensor(signal: DemoSignal) {
+  return api.post<ReadingWithPrediction>("/demo/sensor-data", {
+    source: "demo",
+    ...signal,
+  });
+}
+
 export function startDemo(scenario: ScenarioName) {
   return api.post<DemoSessionStatus & Partial<ReadingWithPrediction>>(
     "/demo/start",

@@ -1,16 +1,25 @@
+import DateTimePicker from "@react-native-community/datetimepicker";
+import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "../components/Button";
+import { Card } from "../components/Card";
+import { Chip } from "../components/Chip";
 import { Input } from "../components/Input";
 import { LoadingState } from "../components/LoadingState";
-import { ErrorState } from "../components/States";
+import { SegmentedControl } from "../components/SegmentedControl";
+import { EmptyState, ErrorState } from "../components/States";
 import { colors } from "../constants/colors";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
 import type { MigraineEpisode } from "../types";
 import { ApiError } from "../services/api";
 import * as symptomService from "../services/symptomService";
+import { formatTimestamp } from "../utils/formatting";
+import type { MainTabParamList } from "../navigation/types";
+
+type Props = BottomTabScreenProps<MainTabParamList, "Symptoms">;
 
 const SYMPTOMS = [
   "Headache",
@@ -19,6 +28,8 @@ const SYMPTOMS = [
   "Sound sensitivity",
   "Aura",
   "Fatigue",
+  "Dizziness",
+  "Other",
 ];
 
 const TRIGGERS = [
@@ -31,7 +42,15 @@ const TRIGGERS = [
   "Other",
 ];
 
-export function SymptomsScreen() {
+const SEVERITIES = [
+  { label: "Mild", value: "mild" },
+  { label: "Moderate", value: "moderate" },
+  { label: "Severe", value: "severe" },
+] as const;
+
+type Severity = (typeof SEVERITIES)[number]["value"];
+
+export function SymptomsScreen(_: Props) {
   const insets = useSafeAreaInsets();
   const [episodes, setEpisodes] = useState<MigraineEpisode[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,6 +58,9 @@ export function SymptomsScreen() {
   const [symptoms, setSymptoms] = useState<string[]>([]);
   const [trigger, setTrigger] = useState("");
   const [notes, setNotes] = useState("");
+  const [severity, setSeverity] = useState<Severity>("moderate");
+  const [startTime, setStartTime] = useState(new Date());
+  const [showPicker, setShowPicker] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const load = () => {
@@ -68,8 +90,8 @@ export function SymptomsScreen() {
     setError(null);
     try {
       await symptomService.logMigraine({
-        start_time: new Date().toISOString(),
-        severity: "moderate",
+        start_time: startTime.toISOString(),
+        severity,
         symptoms,
         trigger: trigger || undefined,
         notes: notes || undefined,
@@ -96,71 +118,122 @@ export function SymptomsScreen() {
       ]}
     >
       <Text style={styles.title}>Symptom Logging</Text>
-      <Text style={styles.sub}>Record what you feel. Uses /api/migraine.</Text>
-      <View style={styles.chips}>
-        {SYMPTOMS.map((s) => (
-          <Pressable
-            key={s}
-            onPress={() => toggle(s)}
-            style={[styles.chip, symptoms.includes(s) && styles.chipA]}
-          >
-            <Text
-              style={[styles.chipT, symptoms.includes(s) && styles.chipTA]}
-            >
-              {s}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-      <Text style={styles.label}>Trigger</Text>
-      <View style={styles.chips}>
-        {TRIGGERS.map((t) => (
-          <Pressable
-            key={t}
-            onPress={() => setTrigger(t)}
-            style={[styles.chip, trigger === t && styles.chipA]}
-          >
-            <Text style={[styles.chipT, trigger === t && styles.chipTA]}>
-              {t}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-      <Input label="Notes" value={notes} onChangeText={setNotes} placeholder="Optional notes" />
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      <Button title="Save Episode" onPress={submit} loading={busy} />
-      <Text style={styles.label}>Recent episodes ({episodes.length})</Text>
-      {episodes.slice(0, 10).map((e) => (
-        <Text key={e.id} style={styles.row}>
-          {e.start_time} — {(e.symptoms ?? []).join(", ")}
-        </Text>
-      ))}
-      {episodes.length === 0 && !error ? (
-        <ErrorState message="No episodes logged yet." />
-      ) : null}
+      <Text style={styles.sub}>
+        Record what you feel. Episodes are the ground truth used to evaluate
+        how well the model predicted your risk.
+      </Text>
+
+      <Card>
+        <Text style={styles.label}>When did it start?</Text>
+        <Button
+          title={formatTimestamp(startTime.toISOString())}
+          variant="secondary"
+          onPress={() => setShowPicker(true)}
+        />
+        {showPicker ? (
+          <DateTimePicker
+            value={startTime}
+            mode="datetime"
+            display={Platform.OS === "ios" ? "spinner" : "default"}
+            onChange={(e, d) => {
+              setShowPicker(Platform.OS === "ios");
+              if (d) setStartTime(d);
+            }}
+          />
+        ) : null}
+
+        <Text style={styles.label}>Severity</Text>
+        <SegmentedControl
+          options={SEVERITIES.map((s) => ({ ...s }))}
+          value={severity}
+          onChange={setSeverity}
+        />
+
+        <Text style={styles.label}>Symptoms</Text>
+        <View style={styles.chips}>
+          {SYMPTOMS.map((s) => (
+            <Chip
+              key={s}
+              label={s}
+              selected={symptoms.includes(s)}
+              onPress={() => toggle(s)}
+            />
+          ))}
+        </View>
+
+        <Text style={styles.label}>Trigger</Text>
+        <View style={styles.chips}>
+          {TRIGGERS.map((t) => (
+            <Chip
+              key={t}
+              label={t}
+              selected={trigger === t}
+              onPress={() => setTrigger(trigger === t ? "" : t)}
+            />
+          ))}
+        </View>
+
+        <Input
+          label="Notes"
+          value={notes}
+          onChangeText={setNotes}
+          placeholder="Optional notes"
+        />
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+        <Button title="Log episode" onPress={() => void submit()} loading={busy} />
+      </Card>
+
+      <Text style={styles.section}>Recent episodes ({episodes.length})</Text>
+      {episodes.length === 0 ? (
+        <EmptyState
+          title="No episodes logged yet"
+          message="Logged episodes appear here with their severity and symptoms."
+        />
+      ) : (
+        episodes.slice(0, 20).map((e) => (
+          <Card key={e.id}>
+            <View style={styles.epHead}>
+              <Text style={styles.epTime}>
+                {formatTimestamp(e.start_time)}
+              </Text>
+              {e.severity ? (
+                <Text style={styles.epSeverity}>{e.severity.toUpperCase()}</Text>
+              ) : null}
+            </View>
+            <Text style={styles.epSymptoms}>{(e.symptoms ?? []).join(", ")}</Text>
+            {e.trigger ? (
+              <Text style={styles.epMeta}>Trigger: {e.trigger}</Text>
+            ) : null}
+            {e.notes ? <Text style={styles.epMeta}>Notes: {e.notes}</Text> : null}
+          </Card>
+        ))
+      )}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.base, gap: spacing.sm },
+  content: { padding: spacing.base, gap: spacing.base },
   title: { ...typography.h1, color: colors.textPrimary },
-  sub: { color: colors.textSecondary },
-  label: { fontWeight: "700", color: colors.textPrimary, marginTop: 8 },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  chip: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    minHeight: 44,
-    justifyContent: "center",
-    backgroundColor: colors.surface,
+  sub: { ...typography.bodySmall, color: colors.textSecondary },
+  section: { ...typography.h2, color: colors.textPrimary },
+  label: {
+    ...typography.bodySmall,
+    color: colors.textPrimary,
+    fontWeight: "600",
+    marginTop: spacing.md,
+    marginBottom: 6,
   },
-  chipA: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
-  chipT: { color: colors.textSecondary },
-  chipTA: { color: colors.primaryDark, fontWeight: "600" },
-  error: { color: colors.error },
-  row: { color: colors.textSecondary, fontSize: 13 },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  error: { ...typography.caption, color: colors.error, marginBottom: spacing.sm },
+  epHead: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  epTime: { ...typography.bodySmall, color: colors.textPrimary, fontWeight: "600" },
+  epSeverity: { ...typography.caption, color: colors.warning, fontWeight: "700" },
+  epSymptoms: { ...typography.bodySmall, color: colors.textSecondary },
+  epMeta: { ...typography.caption, color: colors.textTertiary },
 });

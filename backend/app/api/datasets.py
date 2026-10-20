@@ -43,27 +43,46 @@ class CalibrateIn(BaseModel):
     band_high: Optional[float] = None
 
 
+_CSV_INFO_CACHE: dict[tuple[str, float, int], dict] = {}
+
+
 def _csv_info(path: Path) -> dict:
-    size = path.stat().st_size
+    """File metadata for the dataset list.
+
+    Row counts come from a binary newline scan instead of ``csv.reader``:
+    the bundled datasets hold ~360k rows in total, and parsing them with the
+    csv module made this endpoint take ~30 s. Results are cached per
+    (path, mtime, size) so repeat calls are instant.
+    """
+    stat = path.stat()
+    key = (str(path), stat.st_mtime, stat.st_size)
+    cached = _CSV_INFO_CACHE.get(key)
+    if cached is not None:
+        return dict(cached)
+
+    size = stat.st_size
     rows = 0
     columns: list[str] = []
     try:
-        with open(path, encoding="utf-8", errors="replace", newline="") as fh:
-            reader = csv.reader(fh)
-            header = next(reader, None)
+        with path.open("rb") as fh:
+            header = fh.readline().decode("utf-8", errors="replace").strip()
             if header:
-                columns = header
-            for _ in reader:
-                rows += 1
+                columns = [c.strip() for c in header.split(",")]
+            newlines = 0
+            for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+                newlines += chunk.count(b"\n")
+        rows = max(0, newlines - 1)
     except Exception:  # noqa: BLE001
         rows = -1
-    return {
+    info = {
         "name": path.name,
         "size_bytes": size,
         "rows": rows,
         "columns": columns,
-        "modified": path.stat().st_mtime,
+        "modified": stat.st_mtime,
     }
+    _CSV_INFO_CACHE[key] = info
+    return dict(info)
 
 
 def _storage_base() -> str:
@@ -126,7 +145,8 @@ def _upload_dataset_object(base: str, key: str, content: bytes, headers: dict) -
 
 
 @router.get("")
-def list_datasets(current: User = Depends(get_current_user)):
+def list_datasets(db: Session = Depends(get_db),
+                  current: User = Depends(get_current_user)):
     from ..services.prediction_service import ENGINE
 
     files = []
@@ -136,9 +156,8 @@ def list_datasets(current: User = Depends(get_current_user)):
 
     stored_rows = {}
     try:
-        with SessionLocal() as stored_db:
-            for row in stored_db.execute(select(DatasetFile)).scalars():
-                stored_rows[row.name] = row
+        for row in db.execute(select(DatasetFile)).scalars():
+            stored_rows[row.name] = row
     except Exception:  # noqa: BLE001
         pass
 
@@ -150,13 +169,11 @@ def list_datasets(current: User = Depends(get_current_user)):
 
     thresholds = ENGINE.config_snapshot()
 
-    from ..db.session import SessionLocal
     from ..services.notifications import _real_sends_used
 
     sms_used = 0
     try:
-        with SessionLocal() as sms_db:
-            sms_used = _real_sends_used(sms_db)
+        sms_used = _real_sends_used(db)
     except Exception:  # noqa: BLE001
         pass
 

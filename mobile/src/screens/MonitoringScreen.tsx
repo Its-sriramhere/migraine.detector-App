@@ -1,34 +1,54 @@
+import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
+import type { CompositeScreenProps } from "@react-navigation/native";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Button } from "../components/Button";
+import { Card } from "../components/Card";
 import { DemoBanner } from "../components/DemoBanner";
 import { LoadingState } from "../components/LoadingState";
-import { RiskCard } from "../components/RiskCard";
+import { MetricChart } from "../components/MetricChart";
+import { PiStatus } from "../components/PiStatus";
+import { RiskGauge } from "../components/RiskGauge";
 import { SensorGrid } from "../components/SensorGrid";
 import { ErrorState, OfflineBanner } from "../components/States";
 import { colors } from "../constants/colors";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
+import { useAuth } from "../hooks/useAuth";
 import { useNetwork } from "../hooks/useNetwork";
 import { useSensorData, type SensorMode } from "../hooks/useSensorData";
 import { timeAgo } from "../utils/formatting";
 import * as sensorService from "../services/sensorService";
 import type { ScenarioName } from "../types";
+import type {
+  MainTabParamList,
+  RootStackParamList,
+} from "../navigation/types";
 
-export function MonitoringScreen() {
+type Props = CompositeScreenProps<
+  BottomTabScreenProps<MainTabParamList, "Monitoring">,
+  NativeStackScreenProps<RootStackParamList>
+>;
+
+export function MonitoringScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
   const online = useNetwork();
   const {
     mode,
     prediction,
     latestReading,
+    sensorHistory,
     devices,
+    connected,
     loading,
     error,
     lastSync,
     refresh,
     setMode,
-  } = useSensorData("live");
+  } = useSensorData(user?.id ?? null, "live");
   const [demoBusy, setDemoBusy] = useState(false);
   const [scenario, setScenario] = useState<ScenarioName>("normal");
 
@@ -39,7 +59,7 @@ export function MonitoringScreen() {
       try {
         await sensorService.startDemo(scenario);
       } catch {
-        // surface via next refresh
+        // surfaced on next refresh
       } finally {
         setDemoBusy(false);
         void refresh();
@@ -71,7 +91,9 @@ export function MonitoringScreen() {
       ]}
     >
       <Text style={styles.title}>Live Monitoring</Text>
-      <Text style={styles.status}>{connectedLabel}</Text>
+      <Text style={styles.status}>
+        {connectedLabel} · {connected ? "socket live" : "polling"}
+      </Text>
 
       {online === false ? <OfflineBanner lastSync={lastSync} /> : null}
       {mode === "demo" ? <DemoBanner /> : null}
@@ -81,6 +103,7 @@ export function MonitoringScreen() {
           <Pressable
             key={m}
             accessibilityRole="radio"
+            accessibilityState={{ selected: mode === m }}
             onPress={() => void switchMode(m)}
             style={[styles.pill, mode === m && styles.pillActive]}
           >
@@ -90,6 +113,12 @@ export function MonitoringScreen() {
           </Pressable>
         ))}
       </View>
+
+      <Button
+        title="Open Demo Lab"
+        variant="secondary"
+        onPress={() => navigation.navigate("Demo")}
+      />
 
       {mode === "demo" ? (
         <View style={styles.scenarios}>
@@ -106,9 +135,7 @@ export function MonitoringScreen() {
               }}
               style={[styles.pill, scenario === s && styles.pillActive]}
             >
-              <Text
-                style={[styles.pillText, scenario === s && styles.pillTextA]}
-              >
+              <Text style={[styles.pillText, scenario === s && styles.pillTextA]}>
                 {s.toUpperCase()}
               </Text>
             </Pressable>
@@ -121,12 +148,26 @@ export function MonitoringScreen() {
       ) : error && !prediction ? (
         <ErrorState message={error} onRetry={refresh} />
       ) : prediction ? (
-        <RiskCard
-          score={prediction.risk_score}
-          level={prediction.risk_level}
-          timestamp={prediction.timestamp}
-        />
+        <Card>
+          <Text style={styles.cardTitle}>Predicted Migraine Risk</Text>
+          <View style={styles.gaugeWrap}>
+            <RiskGauge
+              score={prediction.risk_score}
+              level={prediction.risk_level}
+            />
+          </View>
+          <Text style={styles.sub}>
+            {prediction.timestamp
+              ? `Based on measurements ${timeAgo(prediction.timestamp)}`
+              : "Based on latest measurements"}
+          </Text>
+        </Card>
       ) : null}
+
+      <MetricChart metric="heart_rate" readings={sensorHistory} />
+      <MetricChart metric="hrv" readings={sensorHistory} />
+      <MetricChart metric="temperature" readings={sensorHistory} />
+      <MetricChart metric="spo2" readings={sensorHistory} />
 
       {latestReading ? (
         <SensorGrid
@@ -164,6 +205,17 @@ export function MonitoringScreen() {
               updatedAt: latestReading.timestamp,
             },
             {
+              icon: "💉",
+              name: "Blood Pressure",
+              value:
+                latestReading.systolic_bp && latestReading.diastolic_bp
+                  ? `${latestReading.systolic_bp}/${latestReading.diastolic_bp}`
+                  : "—",
+              unit: "mmHg",
+              status: mode === "demo" ? "demo" : "live",
+              updatedAt: latestReading.timestamp,
+            },
+            {
               icon: "🏃",
               name: "Motion",
               value: String(latestReading.activity ?? "—"),
@@ -174,6 +226,8 @@ export function MonitoringScreen() {
           ]}
         />
       ) : null}
+
+      <PiStatus devices={devices} />
 
       <Text style={styles.updated}>
         {lastSync
@@ -189,6 +243,9 @@ const styles = StyleSheet.create({
   content: { padding: spacing.base, gap: spacing.base },
   title: { ...typography.h1, color: colors.textPrimary },
   status: { color: colors.textSecondary },
+  cardTitle: { ...typography.h3, color: colors.textPrimary },
+  gaugeWrap: { alignItems: "center", marginVertical: spacing.base },
+  sub: { ...typography.bodySmall, color: colors.textSecondary },
   toggle: { flexDirection: "row", gap: spacing.sm },
   scenarios: { flexDirection: "row", gap: spacing.sm },
   pill: {
@@ -200,7 +257,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: colors.surface,
   },
-  pillActive: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
+  pillActive: {
+    backgroundColor: colors.primaryLight,
+    borderColor: colors.primary,
+  },
   pillText: { color: colors.textSecondary, fontWeight: "600" },
   pillTextA: { color: colors.primaryDark },
   updated: { color: colors.textTertiary, fontSize: 12 },
