@@ -1,8 +1,8 @@
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import type { CompositeScreenProps } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ArrowUpRight,
@@ -53,6 +53,16 @@ export function HomeScreen({ navigation }: Props) {
     refresh,
   } = useSensorData(user?.id ?? null, "live");
 
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 700,
+      useNativeDriver: true,
+    }).start();
+  }, [fadeAnim]);
+
   useEffect(() => {
     userService.getBaseline().then(setBaseline).catch(() => undefined);
   }, []);
@@ -62,13 +72,14 @@ export function HomeScreen({ navigation }: Props) {
   const score = prediction?.risk_score ?? 0;
 
   return (
-    <ScrollView
-      style={styles.wrap}
-      contentContainerStyle={[
-        styles.content,
-        { paddingTop: insets.top + spacing.base },
-      ]}
-    >
+    <Animated.View style={[styles.wrap, { opacity: fadeAnim }]}>
+      <ScrollView
+        style={styles.wrap}
+        contentContainerStyle={[
+          styles.content,
+          { paddingTop: insets.top + spacing.base },
+        ]}
+      >
       <View style={styles.head}>
         <View style={styles.headText}>
           <Text style={styles.greeting}>{greetingFor()},</Text>
@@ -208,6 +219,7 @@ export function HomeScreen({ navigation }: Props) {
         {mode === "demo" ? " · DEMO DATA" : ""}
       </Text>
     </ScrollView>
+    </Animated.View>
   );
 }
 

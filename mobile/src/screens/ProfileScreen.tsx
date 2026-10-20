@@ -2,7 +2,7 @@ import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import type { CompositeScreenProps } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Bell,
@@ -57,15 +57,23 @@ export function ProfileScreen({ navigation }: Props) {
     >
       <PageTitle title="Profile & Settings" />
 
-      <Card style={styles.profileCard}>
-        <IconCircle size={92} background={colors.blueTint} color={colors.primary}>
-          <Text style={styles.avatar}>{initial}</Text>
-        </IconCircle>
-        <View style={styles.profileText}>
-          <Text style={styles.profileName}>{user?.name ?? "—"}</Text>
-          <Text style={styles.profileSub}>Wearable health profile</Text>
-        </View>
-      </Card>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Open wearable connection"
+        onPress={() => navigation.navigate("Watch")}
+        style={({ pressed }) => (pressed ? { opacity: 0.8 } : undefined)}
+      >
+        <Card style={styles.profileCard}>
+          <IconCircle size={92} background={colors.blueTint} color={colors.primary}>
+            <Text style={styles.avatar}>{initial}</Text>
+          </IconCircle>
+          <View style={styles.profileText}>
+            <Text style={styles.profileName}>{user?.name ?? "—"}</Text>
+            <Text style={styles.profileSub}>Wearable health profile</Text>
+            <Text style={styles.profileLink}>Wearable connection →</Text>
+          </View>
+        </Card>
+      </Pressable>
 
       <MenuRow
         icon={<User size={20} color={colors.primary} />}
@@ -154,6 +162,7 @@ const styles = StyleSheet.create({
   profileText: { flex: 1, gap: 1 },
   profileName: { ...typography.headerTitle, color: colors.textPrimary },
   profileSub: { ...typography.bodySmall, color: colors.textSecondary },
+  profileLink: { ...typography.caption, color: colors.primary, marginTop: 4 },
   cardTitle: { ...typography.section, color: colors.textPrimary },
   cardLine: { ...typography.bodySmall, color: colors.textSecondary },
   note: { ...typography.caption, color: colors.textTertiary, textAlign: "center" },

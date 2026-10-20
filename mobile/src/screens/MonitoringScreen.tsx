@@ -69,6 +69,7 @@ export function MonitoringScreen({ navigation }: Props) {
   }, []);
 
   const pick = (key: MetricKey) => {
+    if (key === "sleep") return []; // sleep history arrives with the wearable
     const list = sensorHistory.map((r) => {
       if (key === "hrv") return r.hrv ?? null;
       if (key === "bp") return r.systolic_bp ?? null;
@@ -191,7 +192,7 @@ export function MonitoringScreen({ navigation }: Props) {
                   barWidth={7}
                   spacing={Math.max(6, 250 / chartData.length)}
                   height={110}
-                  color={METRIC_COLOR[metric]}
+                  frontColor={METRIC_COLOR[metric]}
                   roundedTop
                   initialSpacing={4}
                   yAxisThickness={0}

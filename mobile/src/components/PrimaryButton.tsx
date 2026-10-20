@@ -71,5 +71,5 @@ const styles = StyleSheet.create({
   },
   text: { ...typography.bodyMedium, fontWeight: "600" },
   dim: { opacity: 0.55 },
-  pressed: { opacity: 0.85 },
+  pressed: { opacity: 0.85, transform: [{ scale: 0.95 }] },
 });

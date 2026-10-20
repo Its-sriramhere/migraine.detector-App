@@ -11,9 +11,39 @@
 | `mobile/`       | Expo + TypeScript + React Navigation mobile app (Android + iOS)|
 | `backend/`      | FastAPI API, SQLAlchemy models, WebSocket, ML runtime          |
 | `ml/`           | Training/evaluation scripts (scikit-learn, XGBoost, SHAP)      |
-| `raspberry-pi/` | Edge data-acquisition Python application                       |
-| `docs/`         | Architecture and API documentation                             |
+| `raspberry-pi/` | Legacy edge data-acquisition app (kept for reference)          |
+| `docs/`         | Architecture, API reference and the wearable GATT protocol     |
 | `_archive_web/` | Archived website files (temporary, deleted after MVP works)    |
+
+## The app
+
+React Native (Expo SDK 57) with TypeScript and **React Navigation**
+(Native Stack + Bottom Tabs). The UI follows the Figma design
+*"Migraine Detector — Mobile App UI (10 Screens)"*: white surfaces, navy
+type, green/amber/red risk bands, 18–21 px card radii, 5-tab bottom nav
+(Home · Monitoring · History · Symptoms · Profile).
+
+Screens: Splash · Onboarding · Home Dashboard · Risk Prediction ·
+Health Metrics · Trends & Analytics · Insights & Alerts ·
+Recommendations · Wearable Device · Profile & Settings, plus the 5-step
+health assessment.
+
+### Wearable (Bluetooth) instead of a Raspberry Pi
+
+The app talks to a BLE wearable over a custom GATT profile
+(`docs/wearable-protocol.md`): it subscribes to a `vitals` stream, posts
+readings to the backend as `source="ble"`, and writes a risk `alert` back to
+the watch so it can vibrate.
+
+- `mobile/src/services/ble/watchProtocol.ts` — UUIDs + packet codec
+- `mobile/src/services/ble/bleClient.ts` — lazy `react-native-ble-plx` loader
+- `mobile/src/services/watchService.ts` — scan / connect / subscribe / alert
+- `mobile/src/services/ble/simulatedWatch.ts` — simulated wearable for testing
+
+BLE needs a **development build** (`npx expo run:android` or an EAS dev
+profile) because Expo Go has no BLE native module. The app degrades
+gracefully: the simulated wearable keeps the whole flow testable in Expo Go.
+
 
 ## Quick start
 

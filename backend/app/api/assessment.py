@@ -1,6 +1,6 @@
 import json
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from ..api.deps import get_current_user
@@ -94,20 +94,18 @@ def get_profile(db: Session = Depends(get_db), current: User = Depends(get_curre
 @router.get("/baseline", response_model=BaselineEstimates)
 def get_baseline(db: Session = Depends(get_db), current: User = Depends(get_current_user)):
     from ..services.baseline_service import baseline_for
+    from ..models import UserRiskProfile
 
+    # baseline_for() works with the ORM profile (attribute access) and
+    # falls back to the calibrated defaults when the user has not completed
+    # the assessment yet.
     profile = db.execute(
-        text("SELECT * FROM user_risk_profiles WHERE user_id = :uid"),
-        {"uid": current.id},
-    ).mappings().first()
-    # A user may not have completed the assessment yet — fall back to an
-    # empty profile instead of raising (dict(None) used to 500 here).
-    d = dict(profile) if profile else {}
-    if isinstance(d.get("trigger_profile"), str):
-        d["trigger_profile"] = json.loads(d["trigger_profile"])
-    baseline = baseline_for(db, current.id, d)
+        select(UserRiskProfile).where(UserRiskProfile.user_id == current.id)
+    ).scalar_one_or_none()
+    baseline = baseline_for(db, current.id, profile)
     return BaselineEstimates(
         heart_rate_low=round(baseline.heart_rate - 4, 1),
         heart_rate_high=round(baseline.heart_rate + 4, 1),
-        sleep_hours=d.get("sleep_hours"),
+        sleep_hours=getattr(profile, "sleep_hours", None) if profile else None,
         resting_note="Learned from your physiological readings.",
     )

@@ -184,6 +184,11 @@ export function AlertsScreen({ navigation }: Props) {
                     })
                   }
                 />
+                <PrimaryButton
+                  title="See recommendations →"
+                  variant="ghost"
+                  onPress={() => navigation.navigate("Recommendations")}
+                />
               </Card>
 
               <Text style={styles.section}>Key Factors</Text>

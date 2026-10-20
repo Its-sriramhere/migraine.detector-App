@@ -151,15 +151,19 @@ export function WatchScreen(_: Props) {
         </View>
       ) : null}
 
-      <PrimaryButton
-        title={simulated ? "Use simulated wearable" : "Use simulated wearable"}
-        variant="ghost"
-        onPress={() => setSimulated((s) => !s)}
-      />
-      <Text style={styles.note}>
-        {watch.unavailableReason ??
-          "Bluetooth runs in a development build. The simulated wearable streams realistic signals in Expo Go."}
-      </Text>
+      {simulated ? (
+        <View style={styles.simulatedNotice}>
+          <Text style={styles.simulatedText}>
+            Using simulated wearable{" — real hardware when available"}
+          </Text>
+        </View>
+      ) : watch.unavailableReason && (
+        <View style={styles.unavailableNotice}>
+          <Text style={styles.unavailableText}>
+            {"Bluetooth runs in a development build. "}{"Use simulated wearable to continue."}
+          </Text>
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -182,5 +186,27 @@ const styles = StyleSheet.create({
   vitalLabel: { ...typography.micro, color: colors.textSecondary },
   vitalValue: { ...typography.rowTitle, color: colors.textPrimary },
   deviceList: { gap: spacing.sm },
+  simulatedNotice: {
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.card,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.base,
+  },
+  simulatedText: {
+    ...typography.caption,
+    color: colors.primaryDark,
+    textAlign: "center",
+  },
+  unavailableNotice: {
+    backgroundColor: colors.highPale,
+    borderRadius: radius.card,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.base,
+  },
+  unavailableText: {
+    ...typography.caption,
+    color: colors.high,
+    textAlign: "center",
+  },
   note: { ...typography.caption, color: colors.textTertiary, textAlign: "center" },
 });

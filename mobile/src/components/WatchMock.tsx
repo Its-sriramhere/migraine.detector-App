@@ -1,5 +1,5 @@
-import { StyleSheet, Text, View } from "react-native";
-import Svg, { Circle, Path, Rect } from "react-native-svg";
+import { StyleSheet, View } from "react-native";
+import Svg, { Circle, Path, Rect, Text as SvgText } from "react-native-svg";
 import { colors } from "../constants/colors";
 
 interface Props {
@@ -83,22 +83,22 @@ export function WatchMock({
           strokeWidth={1.5}
           opacity={0.6}
         />
+        {label ? (
+          <SvgText
+            x={bodyW / 2}
+            y={bodyH * 0.2 + screenH * 0.85}
+            fill={colors.watchMuted}
+            fontSize={screenW * 0.11}
+            fontWeight="600"
+            textAnchor="middle"
+            letterSpacing={0.8}
+          >
+            {label}
+          </SvgText>
+        ) : null}
       </Svg>
-      {label ? (
-        <View style={styles.labelWrap}>
-          <Text style={styles.label}>{label}</Text>
-        </View>
-      ) : null}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  labelWrap: { alignItems: "center", marginTop: -34 },
-  label: {
-    color: colors.watchMuted,
-    fontSize: 10,
-    fontWeight: "600",
-    letterSpacing: 0.6,
-  },
-});
+const styles = StyleSheet.create({});
