@@ -22,6 +22,11 @@ export const VITALS_CHAR_UUID = "7a110002-1e1f-4a9b-9c3d-0f1e2d3c4b5a";
 export const ALERT_CHAR_UUID = "7a110003-1e1f-4a9b-9c3d-0f1e2d3c4b5a";
 export const CONTROL_CHAR_UUID = "7a110004-1e1f-4a9b-9c3d-0f1e2d3c4b5a";
 export const INFO_CHAR_UUID = "7a110005-1e1f-4a9b-9c3d-0f1e2d3c4b5a";
+/**
+ * Per-night sleep summary. Kept on its own characteristic so the live vitals
+ * packet stays the same size while the firmware learns to report stages.
+ */
+export const SLEEP_CHAR_UUID = "7a110006-1e1f-4a9b-9c3d-0f1e2d3c4b5a";
 
 export const HEART_RATE_SERVICE_UUID = "0000180d-0000-1000-8000-00805f9b34fb";
 export const HEART_RATE_CHAR_UUID = "00002a37-0000-1000-8000-00805f9b34fb";
@@ -47,6 +52,21 @@ export interface WatchInfo {
   firmware: string;
   battery: number;
   capabilities: number;
+}
+
+export type SleepStage = "awake" | "rem" | "light" | "deep";
+
+/** One night of sleep as reported by the wearable. */
+export interface SleepNight {
+  /** ISO date of the night the data belongs to. */
+  date: string;
+  totalMinutes: number;
+  awakeMinutes: number;
+  remMinutes: number;
+  lightMinutes: number;
+  deepMinutes: number;
+  /** Estimated sleep quality, 0-100. */
+  quality: number;
 }
 
 const B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -168,6 +188,62 @@ export function decodeInfo(data: Uint8Array | string): WatchInfo | null {
       firmware,
       battery: b[1 + fwLen],
       capabilities: b[2 + fwLen],
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Per-night sleep summary packet (14 bytes, little-endian):
+ *
+ *   0      version
+ *   1-2    date, days since the unix epoch (u16)
+ *   3-4    total minutes asleep (u16)
+ *   5-6    awake minutes (u16)
+ *   7-8    REM minutes (u16)
+ *   9-10   light minutes (u16)
+ *   11-12  deep minutes (u16)
+ *   13     estimated quality, 0-100
+ */
+export const SLEEP_PACKET_LENGTH = 14;
+
+export function encodeSleep(night: SleepNight): Uint8Array {
+  const b = new Uint8Array(SLEEP_PACKET_LENGTH);
+  const day = Math.floor(
+    new Date(night.date).getTime() / 86_400_000 - new Date(night.date).getTimezoneOffset() / 1440,
+  );
+  const put16 = (offset: number, value: number) => {
+    const v = Math.max(0, Math.min(65535, Math.round(value)));
+    b[offset] = v & 0xff;
+    b[offset + 1] = (v >> 8) & 0xff;
+  };
+
+  b[0] = PROTOCOL_VERSION;
+  put16(1, day);
+  put16(3, night.totalMinutes);
+  put16(5, night.awakeMinutes);
+  put16(7, night.remMinutes);
+  put16(9, night.lightMinutes);
+  put16(11, night.deepMinutes);
+  b[13] = Math.max(0, Math.min(100, Math.round(night.quality)));
+  return b;
+}
+
+export function decodeSleep(data: Uint8Array | string): SleepNight | null {
+  try {
+    const b = typeof data === "string" ? base64ToBytes(data) : data;
+    if (b.length < SLEEP_PACKET_LENGTH) return null;
+    const day = u16le(b, 1);
+    const date = new Date((day + new Date(day * 86_400_000).getTimezoneOffset() / 1440) * 86_400_000);
+    return {
+      date: date.toISOString(),
+      totalMinutes: u16le(b, 3),
+      awakeMinutes: u16le(b, 5),
+      remMinutes: u16le(b, 7),
+      lightMinutes: u16le(b, 9),
+      deepMinutes: u16le(b, 11),
+      quality: b[13],
     };
   } catch {
     return null;

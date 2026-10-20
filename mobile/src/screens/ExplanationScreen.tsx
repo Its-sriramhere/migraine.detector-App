@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AdviceList } from "../components/AdviceList";
 import { Card } from "../components/Card";
+import { ContributionBars } from "../components/ContributionBars";
 import { LoadingState } from "../components/LoadingState";
 import { RiskBadge } from "../components/RiskBadge";
 import { ErrorState } from "../components/States";
@@ -60,7 +61,7 @@ export function ExplanationScreen({ route }: Props) {
         </View>
       ) : null}
 
-      <Text style={styles.section}>Feature importance</Text>
+      <Text style={styles.section}>Why this risk?</Text>
       {sorted.length === 0 ? (
         <Card>
           <Text style={styles.sub}>
@@ -70,34 +71,13 @@ export function ExplanationScreen({ route }: Props) {
           </Text>
         </Card>
       ) : (
-        sorted.map((f) => {
-          const width = Math.min(
-            100,
-            Math.round(Math.abs(f.contribution) * 100),
-          );
-          return (
-            <Card key={f.name}>
-              <View style={styles.factorHead}>
-                <Text style={styles.name}>{f.name}</Text>
-                <Text
-                  style={[
-                    styles.contribution,
-                    {
-                      color:
-                        f.contribution >= 0 ? colors.highText : colors.lowText,
-                    },
-                  ]}
-                >
-                  {f.contribution >= 0 ? "+" : ""}
-                  {f.contribution.toFixed(3)}
-                </Text>
-              </View>
-              <View style={styles.bar}>
-                <View style={[styles.fill, { width: `${width}%` }]} />
-              </View>
-            </Card>
-          );
-        })
+        <ContributionBars
+          items={sorted.map((f) => ({
+            name: f.name,
+            contribution: f.contribution,
+            value: f.value,
+          }))}
+        />
       )}
 
       {sorted.length > 0 ? (

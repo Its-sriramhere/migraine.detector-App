@@ -1,5 +1,4 @@
 export type AuthStackParamList = {
-  Splash: undefined;
   Login: undefined;
   Register: undefined;
   ForgotPassword: undefined;
@@ -21,8 +20,9 @@ export type SensorMetric =
   | "activity";
 
 export type RootStackParamList = {
+  Splash: undefined;
   Auth: undefined;
-  Main: undefined;
+  Main: { screen?: keyof MainTabParamList } | undefined;
   Onboarding: undefined;
   Assessment: undefined;
   RiskDetails: { predictionId?: number };
@@ -35,4 +35,9 @@ export type RootStackParamList = {
   Settings: undefined;
   Reports: undefined;
   Datasets: undefined;
+  History: undefined;
+  Trends: undefined;
+  Prediction: undefined;
+  Sleep: undefined;
+  PrivacyPolicy: undefined;
 };

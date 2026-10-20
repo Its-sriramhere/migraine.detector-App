@@ -7,14 +7,14 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { AppLogo } from "../components/AppLogo";
+import { Input } from "../components/Input";
 import { PageTitle } from "../components/PageTitle";
 import { PrimaryButton } from "../components/PrimaryButton";
 import { colors } from "../constants/colors";
-import { radius } from "../constants/radius";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
 import { useAuth } from "../hooks/useAuth";
@@ -65,32 +65,32 @@ export function LoginScreen({ navigation }: Props) {
         ]}
         keyboardShouldPersistTaps="handled"
       >
+        <View style={styles.brand}>
+          <AppLogo size={52} />
+        </View>
+
         <PageTitle
           title="Welcome back"
           subtitle="Sign in to continue monitoring."
         />
         <View style={{ height: spacing.lg }} />
 
-        <Text style={styles.label}>Email</Text>
-        <TextInput
+        <Input
+          label="Email"
           value={email}
           onChangeText={setEmail}
           placeholder="you@example.com"
-          placeholderTextColor={colors.textTertiary}
           keyboardType="email-address"
           autoCapitalize="none"
-          style={styles.input}
         />
 
-        <Text style={styles.label}>Password</Text>
-        <TextInput
+        <Input
+          label="Password"
           value={password}
           onChangeText={setPassword}
           placeholder="••••••••"
-          placeholderTextColor={colors.textTertiary}
           secureTextEntry
           autoCapitalize="none"
-          style={styles.input}
         />
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -113,23 +113,7 @@ export function LoginScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.xl, flexGrow: 1, justifyContent: "center" },
-  label: {
-    ...typography.bodySmall,
-    color: colors.textPrimary,
-    fontWeight: "600",
-    marginBottom: 6,
-  },
-  input: {
-    minHeight: 52,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.control,
-    paddingHorizontal: spacing.base,
-    fontSize: 16,
-    color: colors.textPrimary,
-    backgroundColor: colors.surface,
-    marginBottom: spacing.base,
-  },
+  brand: { alignItems: "center", marginBottom: spacing.base },
   error: { ...typography.bodySmall, color: colors.error, marginBottom: spacing.md },
   links: {
     flexDirection: "row",

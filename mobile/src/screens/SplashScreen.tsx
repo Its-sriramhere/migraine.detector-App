@@ -7,17 +7,49 @@ import { BrainArt } from "../components/BrainArt";
 import { colors } from "../constants/colors";
 import { radius } from "../constants/radius";
 import { typography } from "../constants/typography";
-import type { AuthStackParamList } from "../navigation/types";
+import { useAuth } from "../hooks/useAuth";
+import type { RootStackParamList } from "../navigation/types";
+import { hasSeenOnboarding } from "../services/onboardingService";
 
-type Props = NativeStackScreenProps<AuthStackParamList, "Splash">;
+type Props = NativeStackScreenProps<RootStackParamList, "Splash">;
 
+/**
+ * Branded boot screen. It decides where the app opens:
+ *   signed out        -> the auth stack
+ *   signed in, first run -> onboarding
+ *   signed in, returning  -> the main tabs
+ */
 export function SplashScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
 
   useEffect(() => {
-    const id = setTimeout(() => navigation.replace("Login"), 1600);
-    return () => clearTimeout(id);
-  }, [navigation]);
+    let cancelled = false;
+
+    const id = setTimeout(async () => {
+      if (cancelled) return;
+
+      // The navigator is keyed on the session, so only one of these routes
+      // is ever registered. Guard anyway so a stale session cannot throw.
+      const available = navigation.getState().routeNames;
+
+      if (!user) {
+        navigation.replace(available.includes("Auth") ? "Auth" : "Main");
+        return;
+      }
+
+      const seen = await hasSeenOnboarding();
+      if (cancelled) return;
+
+      const target = seen ? "Main" : "Onboarding";
+      navigation.replace(available.includes(target) ? target : "Main");
+    }, 1600);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(id);
+    };
+  }, [navigation, user]);
 
   return (
     <LinearGradient

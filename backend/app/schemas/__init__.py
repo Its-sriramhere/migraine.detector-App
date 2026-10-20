@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, Optional
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, EmailStr, Field
 
 
 class ORMBase(BaseModel):
@@ -241,6 +241,60 @@ class ReportOverview(BaseModel):
     average_risk: Optional[float] = None
     risk_band_counts: dict[str, int] = {}
     days_monitored: int = 0
+
+
+# --- Chat (Mira) ---
+
+class ChatMessageIn(BaseModel):
+    role: str = Field(pattern="^(user|assistant)$")
+    content: str = Field(min_length=1, max_length=1000)
+
+
+class ChatRequest(BaseModel):
+    messages: list[ChatMessageIn] = Field(min_length=1, max_length=16)
+    topic_id: Optional[str] = Field(
+        default=None,
+        max_length=40,
+        validation_alias=AliasChoices("topic_id", "topicId"),
+    )
+    share_metrics: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("share_metrics", "shareMetrics"),
+    )
+    wearable_data: Optional[dict[str, Any]] = Field(
+        default=None,
+        validation_alias=AliasChoices("wearable_data", "wearableData"),
+    )
+
+
+class ChatResponse(BaseModel):
+    reply: str
+    mode: str = "demo"
+    topic_id: Optional[str] = None
+
+
+class ChatFeatureOut(BaseModel):
+    id: str
+    icon: str
+    title: str
+    short_title: str
+    route: str
+    summary: str
+    see: str
+    steps: list[str]
+    note: str
+
+
+class ChatGuideOut(BaseModel):
+    features: list[ChatFeatureOut]
+    tour_ids: list[str]
+    questions: list[dict[str, str]]
+    health_prompts: list[str]
+
+
+class ChatStatusOut(BaseModel):
+    mode: str
+    guide: bool = True
 
 
 PredictionOut.model_rebuild()

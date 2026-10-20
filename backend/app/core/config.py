@@ -37,6 +37,12 @@ class Settings(BaseSettings):
     DATASET_DIR: str = str(Path(__file__).resolve().parents[3] / "ml" / "datasets")
     THRESHOLDS_PATH: str = str(Path(__file__).resolve().parents[1] / "ml" / "thresholds.json")
 
+    # --- Mira assistant (optional) ---
+    # The key is only ever read here on the server. Without it the assistant
+    # still answers from the built-in app guide and wellness FAQ.
+    OPENAI_API_KEY: str = ""
+    OPENAI_MODEL: str = "gpt-4.1-mini"
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @property

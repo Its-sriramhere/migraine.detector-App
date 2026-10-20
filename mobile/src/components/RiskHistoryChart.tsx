@@ -85,5 +85,5 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     paddingVertical: spacing.lg,
   },
-  axis: { ...typography.caption, color: colors.textTertiary, fontSize: 10 },
+  axis: { ...typography.axis, color: colors.textTertiary },
 });

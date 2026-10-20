@@ -1,4 +1,4 @@
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { NativeStackNavigationProp, NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useState } from "react";
 import {
   KeyboardAvoidingView,
@@ -6,20 +6,20 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { AppLogo } from "../components/AppLogo";
+import { ConsentCheck } from "../components/ConsentCheck";
+import { Input } from "../components/Input";
 import { PageTitle } from "../components/PageTitle";
 import { PrimaryButton } from "../components/PrimaryButton";
 import { colors } from "../constants/colors";
-import { radius } from "../constants/radius";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
 import { useAuth } from "../hooks/useAuth";
-import type { AuthStackParamList } from "../navigation/types";
+import type { AuthStackParamList, RootStackParamList } from "../navigation/types";
 import { register } from "../services/authService";
 import { ApiError } from "../services/api";
 import { validateRegister } from "../utils/validation";
@@ -33,10 +33,22 @@ export function RegisterScreen({ navigation }: Props) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [consent, setConsent] = useState(false);
+  const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  // The privacy policy lives on the root stack, so it can also be opened
+  // before the user has an account.
+  const openPrivacyPolicy = () => {
+    const root = navigation.getParent<NativeStackNavigationProp<RootStackParamList>>();
+    root?.navigate("PrivacyPolicy");
+  };
+
   const submit = async () => {
+    if (!agreed) {
+      setError("Please agree to the Privacy Policy to continue.");
+      return;
+    }
     const v = validateRegister(name, email, password, consent);
     if (v) {
       setError(v);
@@ -73,52 +85,54 @@ export function RegisterScreen({ navigation }: Props) {
         ]}
         keyboardShouldPersistTaps="handled"
       >
+        <View style={styles.brand}>
+          <AppLogo size={52} />
+        </View>
+
         <PageTitle
           title="Create account"
           subtitle="Set up your wearable health profile."
         />
         <View style={{ height: spacing.lg }} />
 
-        <Text style={styles.label}>Name</Text>
-        <TextInput
+        <Input
+          label="Name"
           value={name}
           onChangeText={setName}
           placeholder="Your name"
-          placeholderTextColor={colors.textTertiary}
-          style={styles.input}
+          autoCapitalize="words"
         />
 
-        <Text style={styles.label}>Email</Text>
-        <TextInput
+        <Input
+          label="Email"
           value={email}
           onChangeText={setEmail}
           placeholder="you@example.com"
-          placeholderTextColor={colors.textTertiary}
           keyboardType="email-address"
           autoCapitalize="none"
-          style={styles.input}
         />
 
-        <Text style={styles.label}>Password</Text>
-        <TextInput
+        <Input
+          label="Password"
           value={password}
           onChangeText={setPassword}
           placeholder="Min. 8 characters"
-          placeholderTextColor={colors.textTertiary}
           secureTextEntry
           autoCapitalize="none"
-          style={styles.input}
+          helper="Stored hashed on the server — never logged or shared."
         />
-        <Text style={styles.helper}>
-          Stored hashed on the server — never logged or shared.
-        </Text>
 
-        <View style={styles.consent}>
-          <Switch value={consent} onValueChange={setConsent} />
-          <Text style={styles.consentText}>
-            I consent to health-data processing for risk estimation.
-          </Text>
-        </View>
+        <ConsentCheck checked={consent} onToggle={() => setConsent((c) => !c)}>
+          I consent to health-data processing for risk estimation.
+        </ConsentCheck>
+
+        <ConsentCheck
+          checked={agreed}
+          onToggle={() => setAgreed((a) => !a)}
+          link={{ label: "Privacy Policy", onPress: openPrivacyPolicy }}
+        >
+          I agree to the terms of use and the
+        </ConsentCheck>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -138,37 +152,10 @@ export function RegisterScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.xl, flexGrow: 1, justifyContent: "center" },
-  label: {
-    ...typography.bodySmall,
-    color: colors.textPrimary,
-    fontWeight: "600",
-    marginBottom: 6,
-  },
-  input: {
-    minHeight: 52,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.control,
-    paddingHorizontal: spacing.base,
-    fontSize: 16,
-    color: colors.textPrimary,
-    backgroundColor: colors.surface,
-    marginBottom: spacing.base,
-  },
-  helper: { ...typography.caption, color: colors.textTertiary, marginTop: -8 },
-  consent: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    marginVertical: spacing.base,
-  },
-  consentText: { flex: 1, ...typography.bodySmall, color: colors.textSecondary },
-  error: { ...typography.bodySmall, color: colors.error, marginBottom: spacing.md },
+  brand: { alignItems: "center", marginBottom: spacing.base },
   link: {
     color: colors.primary,
     fontWeight: "600",
-    marginTop: spacing.base,
-    padding: 8,
-    textAlign: "center",
   },
+  error: { ...typography.bodySmall, color: colors.error, marginBottom: spacing.md },
 });

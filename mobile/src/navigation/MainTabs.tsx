@@ -1,31 +1,40 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { useNavigation } from "@react-navigation/native";
+import type { NavigationProp } from "@react-navigation/native";
 import { Activity, ClipboardList, House, User } from "lucide-react-native";
 import { CenteredTabBar } from "../components/CenteredTabBar";
+import { MiraHost } from "../components/MiraHost";
 import { HomeScreen } from "../screens/HomeScreen";
 import { MonitoringScreen } from "../screens/MonitoringScreen";
 import { ProfileScreen } from "../screens/ProfileScreen";
 import { SymptomsScreen } from "../screens/SymptomsScreen";
-import type { MainTabParamList } from "./types";
+import { navigateToGuideRoute } from "../utils/miraRoutes";
+import type { MainTabParamList, RootStackParamList } from "./types";
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
-const ICONS = {
-  Home: House,
-  Monitoring: Activity,
-  Symptoms: ClipboardList,
-  Profile: User,
-} as const;
-
 export function MainTabs() {
+  const navigation = useNavigation<
+    NavigationProp<RootStackParamList & MainTabParamList>
+  >();
+
+  const onNavigate = (route: string) => {
+    navigateToGuideRoute(navigation, route);
+  };
+
   return (
-    <Tab.Navigator
-      screenOptions={{ headerShown: false }}
-      tabBar={(props) => <CenteredTabBar {...props} />}
-    >
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Monitoring" component={MonitoringScreen} />
-      <Tab.Screen name="Symptoms" component={SymptomsScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
-    </Tab.Navigator>
+    <>
+      <Tab.Navigator
+        screenOptions={{ headerShown: false }}
+        tabBar={(props) => <CenteredTabBar {...props} />}
+      >
+        <Tab.Screen name="Home" component={HomeScreen} />
+        <Tab.Screen name="Monitoring" component={MonitoringScreen} />
+        <Tab.Screen name="Symptoms" component={SymptomsScreen} />
+        <Tab.Screen name="Profile" component={ProfileScreen} />
+      </Tab.Navigator>
+
+      <MiraHost onNavigate={onNavigate} />
+    </>
   );
 }

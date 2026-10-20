@@ -99,9 +99,7 @@ export function HomeScreen({ navigation }: Props) {
       ) : prediction ? (
         <Pressable
           accessibilityRole="button"
-          onPress={() =>
-            navigation.navigate("RiskDetails", { predictionId: prediction.id })
-          }
+          onPress={() => navigation.navigate("Prediction")}
         >
           <RiskSummaryCard
             icon={<Check size={20} color={colors.low} strokeWidth={3} />}
@@ -197,7 +195,7 @@ export function HomeScreen({ navigation }: Props) {
           </Text>
           <Pressable
             accessibilityRole="button"
-            onPress={() => navigation.navigate("History" as never)}
+            onPress={() => navigation.navigate("Trends")}
             style={styles.trendLink}
           >
             <Text style={styles.trendLinkText}>View analytics →</Text>

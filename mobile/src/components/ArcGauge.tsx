@@ -1,110 +1,211 @@
-import { StyleSheet, Text, View } from "react-native";
-import Svg, { Circle, G, Path } from "react-native-svg";
-import { colors, riskColors } from "../constants/colors";
+import { useEffect, useRef, useState } from "react";
+import { Animated, StyleSheet, Text, View } from "react-native";
+import Svg, { Circle, Path } from "react-native-svg";
+import {
+  RISK_BAND_HIGH,
+  RISK_BAND_LOW,
+  themeNew,
+} from "../constants/colors";
 import { typography } from "../constants/typography";
+
+/**
+ * Semicircular three-band gauge from the Figma "03 Migraine Prediction"
+ * screen: green -> amber -> red zones with the score in the middle.
+ *
+ * The band edges come from the shared risk thresholds (30 / 70) so the gauge
+ * can never disagree with the API about what "moderate" means.
+ */
+const VB_W = 240;
+const VB_H = 132;
+const CX = 120;
+const CY = 120;
+const R = 110;
+const STROKE = 21;
+const CAP_R = STROKE / 2;
+
+/** Point on the gauge circle. The scale runs from 180 (score 0) to 0 (100). */
+function point(score: number) {
+  const angle = ((180 - score * 1.8) * Math.PI) / 180;
+  return {
+    x: CX + R * Math.cos(angle),
+    y: CY - R * Math.sin(angle),
+  };
+}
+
+function bandPath(from: number, to: number) {
+  const a = point(from);
+  const b = point(to);
+  return `M ${a.x} ${a.y} A ${R} ${R} 0 0 1 ${b.x} ${b.y}`;
+}
 
 interface Props {
   score: number;
   level: string;
   caption?: string;
-  size?: number;
+  width?: number;
+  /** Use the newer Figma frame palette (default) or the original screens. */
+  variant?: "new" | "classic";
 }
 
-/**
- * Semicircular three-band gauge from the Figma risk screen:
- * green → amber → red zones with a marker at the current score.
- */
-export function ArcGauge({ score, level, caption, size = 300 }: Props) {
-  const rc = riskColors(level);
-  const stroke = 26;
-  const r = 118;
-  const cx = size / 2;
-  const cy = size / 2 - 8;
+export function ArcGauge({
+  score,
+  level,
+  caption,
+  width = 265,
+  variant = "new",
+}: Props) {
+  const palette =
+    variant === "new"
+      ? {
+          track: themeNew.gaugeTrack,
+          low: themeNew.gaugeLow,
+          moderate: themeNew.gaugeModerate,
+          high: themeNew.gaugeHigh,
+          score: themeNew.textPrimary,
+          level: themeNew.levelModerate,
+        }
+      : {
+          track: "#EAF0F8",
+          low: "#36C58D",
+          moderate: "#F4BE56",
+          high: "#F16D76",
+          score: "#172642",
+          level: "#27B985",
+        };
 
-  // 180° arc, 0 = left, 100 = right
-  const polar = (percent: number) => {
-    const angle = Math.PI * (1 - percent / 100);
-    return {
-      x: cx + r * Math.cos(angle),
-      y: cy - r * Math.sin(angle),
-    };
-  };
+  const clamped = Math.max(0, Math.min(100, score));
+  const levelColor =
+    level === "high"
+      ? palette.high
+      : level === "moderate"
+        ? palette.moderate
+        : palette.low;
 
-  const arcPath = (from: number, to: number) => {
-    const start = polar(from);
-    const end = polar(to);
-    const largeArc = to - from > 50 ? 1 : 0;
-    return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 0 ${end.x} ${end.y}`;
-  };
+  // Count the score up from zero so the gauge reads as a live measurement.
+  const progress = useRef(new Animated.Value(0)).current;
+  const [shown, setShown] = useState(0);
 
-  const marker = polar(Math.max(0, Math.min(100, score)));
-  const inner = polar(Math.max(0, Math.min(100, score)));
-  const innerR = r - stroke / 2 - 14;
+  useEffect(() => {
+    const id = progress.addListener(({ value }) => setShown(value));
+    Animated.timing(progress, {
+      toValue: clamped,
+      duration: 900,
+      useNativeDriver: false,
+    }).start();
+    return () => progress.removeListener(id);
+  }, [clamped, progress]);
+
+  const fade = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(fade, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
+  }, [fade]);
+
+  const scale = width / VB_W;
+  const height = VB_H * scale;
+
+  const bandLow = bandPath(0, RISK_BAND_LOW);
+  const bandModerate = bandPath(RISK_BAND_LOW, RISK_BAND_HIGH);
+  const bandHigh = bandPath(RISK_BAND_HIGH, 100);
+
+  const endLow = point(0);
+  const endHigh = point(100);
 
   return (
-    <View style={styles.wrap} accessibilityRole="image"
-      accessibilityLabel={`Predicted migraine risk ${Math.round(score)} percent, ${level}`}>
-      <Svg width={size} height={size * 0.62} viewBox={`0 0 ${size} ${size * 0.62}`}>
-        <G>
-          <Path
-            d={arcPath(0, 50)}
-            stroke={colors.low}
-            strokeWidth={stroke}
-            strokeLinecap="round"
-            fill="none"
-          />
-          <Path
-            d={arcPath(50, 78)}
-            stroke={colors.moderate}
-            strokeWidth={stroke}
-            fill="none"
-          />
-          <Path
-            d={arcPath(78, 100)}
-            stroke={colors.high}
-            strokeWidth={stroke}
-            strokeLinecap="round"
-            fill="none"
-          />
-          <Circle
-            cx={marker.x}
-            cy={marker.y}
-            r={11}
-            fill={colors.surface}
-            stroke={rc.indicator}
-            strokeWidth={6}
-          />
-          <Circle
-            cx={cx + innerR * (inner.x - cx) / r}
-            cy={cy + innerR * (inner.y - cy) / r}
-            r={0}
-            fill="none"
-          />
-        </G>
-      </Svg>
-      <View style={styles.center} pointerEvents="none">
-        <Text style={styles.level}>{level.toUpperCase()}</Text>
-        <Text style={[styles.score, { color: rc.text }]}>
-          {Math.round(score)}%
-        </Text>
-        {caption ? <Text style={styles.caption}>{caption}</Text> : null}
+    <View
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel={`Predicted migraine risk ${Math.round(clamped)} percent, ${level}`}
+      style={styles.wrap}
+    >
+      <View style={{ width, height }}>
+        <Animated.View style={[StyleSheet.absoluteFill, { opacity: fade }]}>
+          <Svg width={width} height={height} viewBox={`0 0 ${VB_W} ${VB_H}`}>
+            {/* Track */}
+            <Path
+              d={bandPath(0, 100)}
+              stroke={palette.track}
+              strokeWidth={STROKE}
+              strokeLinecap="butt"
+              fill="none"
+            />
+            <Circle cx={endLow.x} cy={endLow.y} r={CAP_R} fill={palette.track} />
+            <Circle cx={endHigh.x} cy={endHigh.y} r={CAP_R} fill={palette.track} />
+
+            {/* Bands */}
+            <Path
+              d={bandLow}
+              stroke={palette.low}
+              strokeWidth={STROKE}
+              strokeLinecap="butt"
+              fill="none"
+            />
+            <Circle cx={endLow.x} cy={endLow.y} r={CAP_R} fill={palette.low} />
+
+            <Path
+              d={bandModerate}
+              stroke={palette.moderate}
+              strokeWidth={STROKE}
+              strokeLinecap="butt"
+              fill="none"
+            />
+
+            <Path
+              d={bandHigh}
+              stroke={palette.high}
+              strokeWidth={STROKE}
+              strokeLinecap="butt"
+              fill="none"
+            />
+            <Circle cx={endHigh.x} cy={endHigh.y} r={CAP_R} fill={palette.high} />
+          </Svg>
+        </Animated.View>
+
+        <View style={styles.readout} pointerEvents="none">
+          <Text style={[styles.score, { color: palette.score }]}>
+            {Math.round(shown)}
+          </Text>
+          <Text style={[styles.level, { color: levelColor }]}>
+            {level.toUpperCase()}
+          </Text>
+        </View>
       </View>
+
+      {caption ? (
+        <Text style={styles.caption} numberOfLines={2}>
+          {caption}
+        </Text>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { alignItems: "center", justifyContent: "center" },
-  center: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+  wrap: { alignItems: "center" },
+  readout: {
+    ...StyleSheet.absoluteFill,
     alignItems: "center",
     justifyContent: "center",
   },
-  level: { fontSize: 34, lineHeight: 40, fontWeight: "700", color: colors.textPrimary },
-  score: { fontSize: 27, lineHeight: 33, fontWeight: "700" },
-  caption: { ...typography.caption, color: colors.textSecondary },
+  score: {
+    fontSize: 43,
+    lineHeight: 52,
+    fontWeight: "700",
+    marginBottom: 6,
+  },
+  level: {
+    fontSize: 13,
+    lineHeight: 16,
+    fontWeight: "700",
+    letterSpacing: 0.4,
+  },
+  caption: {
+    ...typography.caption,
+    color: themeNew.textSecondary,
+    textAlign: "center",
+    marginTop: 2,
+  },
 });

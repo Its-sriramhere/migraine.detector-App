@@ -12,6 +12,7 @@ import {
   HelpCircle,
   User,
 } from "lucide-react-native";
+import { AppLogo } from "../components/AppLogo";
 import { Card } from "../components/Card";
 import { IconCircle } from "../components/IconCircle";
 import { MenuRow } from "../components/MenuRow";
@@ -55,6 +56,14 @@ export function ProfileScreen({ navigation }: Props) {
         { paddingTop: insets.top + spacing.base },
       ]}
     >
+      <View style={styles.brandRow}>
+        <AppLogo size={40} />
+        <View style={styles.brandText}>
+          <Text style={styles.brandName}>Migraine Detector</Text>
+          <Text style={styles.brandSub}>Wearable-powered health companion</Text>
+        </View>
+      </View>
+
       <PageTitle title="Profile & Settings" />
 
       <Pressable
@@ -152,6 +161,22 @@ export function ProfileScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.base, gap: spacing.md },
+  brandRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+  },
+  brandText: { flex: 1, gap: 2 },
+  brandName: {
+    ...typography.rowTitle,
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.textPrimary,
+  },
+  brandSub: {
+    ...typography.micro,
+    color: colors.textSecondary,
+  },
   profileCard: {
     flexDirection: "row",
     alignItems: "center",

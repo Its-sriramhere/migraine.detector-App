@@ -2,14 +2,15 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Moon, HeartPulse, Droplets, Activity } from "lucide-react-native";
-import { IconCircle } from "../components/IconCircle";
+import { AppLogo } from "../components/AppLogo";
+import { OnboardingArt } from "../components/OnboardingArt";
 import { PrimaryButton } from "../components/PrimaryButton";
-import { WatchMock } from "../components/WatchMock";
 import { colors } from "../constants/colors";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
 import type { RootStackParamList } from "../navigation/types";
+import { markOnboardingSeen } from "../services/onboardingService";
+import * as userService from "../services/userService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Onboarding">;
 
@@ -40,32 +41,39 @@ export function OnboardingScreen({ navigation }: Props) {
   const page = PAGES[index];
   const last = index === PAGES.length - 1;
 
+  const finish = async () => {
+    await markOnboardingSeen();
+
+    // Users who already have a risk profile have completed the assessment
+    // before, so onboarding can hand them straight to the app.
+    let hasProfile = true;
+    try {
+      await userService.getRiskProfile();
+    } catch {
+      hasProfile = false;
+    }
+
+    navigation.replace(hasProfile ? "Main" : "Assessment");
+  };
+
   return (
     <View style={styles.wrap}>
       <ScrollView
         contentContainerStyle={[
           styles.content,
-          { paddingTop: insets.top + spacing.lg, paddingBottom: spacing.xl },
+          { paddingTop: insets.top + spacing.lg, paddingBottom: spacing.lg },
         ]}
         showsVerticalScrollIndicator={false}
       >
+        <View style={styles.brand}>
+          <AppLogo size={44} />
+        </View>
+
         <Text style={styles.eyebrow}>{page.eyebrow}</Text>
         <Text style={styles.title}>{page.title}</Text>
 
-        <View style={styles.art}>
-          <WatchMock width={150} label="HEALTH MONITOR" />
-          <IconCircle size={54} background={colors.pinkTint} color={colors.high}>
-            <HeartPulse size={20} color={colors.high} />
-          </IconCircle>
-          <IconCircle size={48} background={colors.lavender} color={colors.lavenderStrong}>
-            <Moon size={18} color={colors.lavenderStrong} />
-          </IconCircle>
-          <IconCircle size={48} background={colors.mintTint} color={colors.lowDark}>
-            <Droplets size={18} color={colors.lowDark} />
-          </IconCircle>
-          <IconCircle size={48} background={colors.blueTint} color={colors.primary}>
-            <Activity size={18} color={colors.primary} />
-          </IconCircle>
+        <View style={styles.artWrap}>
+          <OnboardingArt />
         </View>
 
         <Text style={styles.headline}>{page.headline}</Text>
@@ -81,11 +89,13 @@ export function OnboardingScreen({ navigation }: Props) {
       <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.lg }]}>
         <PrimaryButton
           title={last ? "Get Started" : "Continue"}
-          onPress={() =>
-            last
-              ? navigation.navigate("Assessment")
-              : setIndex((i) => Math.min(PAGES.length - 1, i + 1))
-          }
+          onPress={() => {
+            if (last) {
+              void finish();
+            } else {
+              setIndex((i) => Math.min(PAGES.length - 1, i + 1));
+            }
+          }}
         />
       </View>
     </View>
@@ -95,15 +105,31 @@ export function OnboardingScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.background },
   content: { paddingHorizontal: spacing.xl, gap: spacing.sm },
+  brand: { alignItems: "center", marginBottom: spacing.md },
   eyebrow: {
     ...typography.microStrong,
+    fontSize: 12,
+    lineHeight: 15,
     color: colors.primary,
     textAlign: "center",
     letterSpacing: 0.8,
   },
-  title: { ...typography.section, color: colors.textPrimary, textAlign: "center" },
-  art: { alignItems: "center", justifyContent: "center", paddingVertical: spacing.xl },
-  headline: { ...typography.title, color: colors.textPrimary, textAlign: "center" },
+  title: {
+    ...typography.rowTitle,
+    fontSize: 21,
+    lineHeight: 25,
+    fontWeight: "700",
+    color: colors.textPrimary,
+    textAlign: "center",
+  },
+  artWrap: { alignItems: "center", marginTop: spacing.lg },
+  headline: {
+    ...typography.title,
+    fontSize: 30,
+    lineHeight: 36,
+    color: colors.textPrimary,
+    textAlign: "center",
+  },
   body: {
     ...typography.body,
     color: colors.textSecondary,

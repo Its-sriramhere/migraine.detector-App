@@ -14,10 +14,10 @@ const METRIC_META: Record<
   { title: string; unit: string; color: string }
 > = {
   heart_rate: { title: "Heart rate", unit: "BPM", color: colors.primary },
-  hrv: { title: "HRV", unit: "ms", color: "#8B5CF6" },
-  temperature: { title: "Temperature", unit: "°C", color: "#D97706" },
-  spo2: { title: "SpO₂", unit: "%", color: "#059669" },
-  activity: { title: "Motion", unit: "g", color: "#0EA5E9" },
+  hrv: { title: "HRV", unit: "ms", color: colors.lavenderStrong },
+  temperature: { title: "Temperature", unit: "°C", color: colors.moderateDark },
+  spo2: { title: "SpO₂", unit: "%", color: colors.lowDark },
+  activity: { title: "Motion", unit: "g", color: colors.splashInk },
 };
 
 export function MetricChart({
@@ -105,5 +105,5 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     paddingVertical: spacing.lg,
   },
-  axis: { ...typography.caption, color: colors.textTertiary, fontSize: 10 },
+  axis: { ...typography.axis, color: colors.textTertiary },
 });

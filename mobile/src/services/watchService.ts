@@ -5,14 +5,17 @@ import {
   CONTROL,
   CONTROL_CHAR_UUID,
   INFO_CHAR_UUID,
+  SLEEP_CHAR_UUID,
   VITALS_CHAR_UUID,
   WATCH_SERVICE_UUID,
   bytesToBase64,
   decodeInfo,
+  decodeSleep,
   decodeVitals,
   encodeAlert,
   encodeControl,
   type AlertLevel,
+  type SleepNight,
   type Vitals,
   type WatchInfo,
 } from "./ble/watchProtocol";
@@ -110,6 +113,22 @@ class WatchService {
       );
       return decodeInfo(characteristic.value ?? "");
     } catch {
+      return null;
+    }
+  }
+
+  /** Read the last night of sleep the wearable recorded, if it reports it. */
+  async readSleep(): Promise<SleepNight | null> {
+    const device = this.device;
+    if (!device) return null;
+    try {
+      const characteristic = await device.readCharacteristicForService(
+        WATCH_SERVICE_UUID,
+        SLEEP_CHAR_UUID,
+      );
+      return decodeSleep(characteristic.value ?? "");
+    } catch {
+      // characteristic not present on this firmware revision
       return null;
     }
   }
