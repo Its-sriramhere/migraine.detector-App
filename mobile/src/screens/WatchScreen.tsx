@@ -36,6 +36,17 @@ export function WatchScreen(_: Props) {
     setBusy(false);
   };
 
+  /** Refresh the readings from whichever device is in use. */
+  const onSync = async () => {
+    if (simulated) {
+      setBusy(true);
+      await watch.syncSimulated();
+      setBusy(false);
+      return;
+    }
+    await onScan();
+  };
+
   return (
     <ScrollView
       style={styles.wrap}
@@ -125,9 +136,18 @@ export function WatchScreen(_: Props) {
       ) : null}
 
       <PrimaryButton
-        title={connected ? "Sync now" : "Scan for wearables"}
-        onPress={() => (connected ? watch.disconnect() : void onScan())}
+        title={connected ? "Sync now" : simulated ? "Refresh readings" : "Scan for wearables"}
+        onPress={() => (connected ? void onSync() : void onScan())}
         loading={busy}
+      />
+
+      <PrimaryButton
+        title={simulated ? "Connect a real wearable" : "Use the simulated wearable"}
+        variant="ghost"
+        onPress={() => {
+          setSimulated((s) => !s);
+          setBusy(false);
+        }}
       />
 
       {!connected && watch.devices.length > 0 ? (

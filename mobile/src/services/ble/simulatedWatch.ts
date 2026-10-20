@@ -9,10 +9,13 @@ export function createSimulatedWatch(): {
   disconnect: () => void;
   writeAlert: (level: number) => void;
   subscribe: (cb: (v: Vitals) => void) => () => void;
+  /** Push one reading immediately, without waiting for the next tick. */
+  emit: () => void;
   info: () => WatchInfo;
 } {
   let timer: ReturnType<typeof setInterval> | null = null;
   let t = 0;
+  let subscriber: ((v: Vitals) => void) | null = null;
   const base: Vitals = {
     version: 1,
     heart_rate: 72,
@@ -48,13 +51,19 @@ export function createSimulatedWatch(): {
     disconnect: () => {
       if (timer) clearInterval(timer);
       timer = null;
+      subscriber = null;
     },
     writeAlert: () => {},
+    emit: () => {
+      subscriber?.(next());
+    },
     subscribe: (cb) => {
+      subscriber = cb;
       timer = setInterval(() => cb(next()), 2000);
       return () => {
         if (timer) clearInterval(timer);
         timer = null;
+        subscriber = null;
       };
     },
     info: () => ({ firmware: "sim-1.0.0", battery: 78, capabilities: 0x0f }),

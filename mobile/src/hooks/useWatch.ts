@@ -30,6 +30,7 @@ export function useWatch(options?: { simulated?: boolean }) {
   const [error, setError] = useState<string | null>(null);
   const [devices, setDevices] = useState<DiscoveredWatch[]>([]);
   const cleanup = useRef<(() => void) | null>(null);
+  const simulator = useRef<ReturnType<typeof createSimulatedWatch> | null>(null);
 
   useEffect(() => {
     if (!simulated) {
@@ -40,16 +41,30 @@ export function useWatch(options?: { simulated?: boolean }) {
       return;
     }
     const watch = createSimulatedWatch();
+    simulator.current = watch;
     watch.connect().then(() => {
       setInfo(watch.info());
       setState("connected");
+      setError(null);
       cleanup.current = watch.subscribe(setVitals);
     });
     return () => {
       cleanup.current?.();
+      cleanup.current = null;
+      simulator.current = null;
       watch.disconnect();
     };
   }, [simulated]);
+
+  /** Push a fresh set of simulated readings straight away. */
+  const syncSimulated = useCallback(async () => {
+    const watch = simulator.current;
+    if (!watch) return;
+    setInfo(watch.info());
+    setState("connected");
+    setError(null);
+    watch.emit();
+  }, []);
 
   const scan = useCallback(async () => {
     setState("scanning");
@@ -112,6 +127,7 @@ export function useWatch(options?: { simulated?: boolean }) {
     scan,
     connect,
     disconnect,
+    syncSimulated,
     sendAlert,
     available: simulated || watchService.available,
     unavailableReason: watchService.unavailableReason,
