@@ -3,6 +3,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { AppHeader } from "../components/AppHeader";
 import { AdviceList } from "../components/AdviceList";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
@@ -61,7 +62,7 @@ const PRESETS: { name: ScenarioName; label: string; note: string }[] = [
   { name: "high", label: "HIGH RISK", note: "Strong deviation, high risk" },
 ];
 
-export function DemoScreen(_: Props) {
+export function DemoScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const [values, setValues] = useState<Record<string, number>>({
     heart_rate: 72,
@@ -173,7 +174,7 @@ export function DemoScreen(_: Props) {
         { paddingTop: insets.top + spacing.base },
       ]}
     >
-      <Text style={styles.title}>Demo Lab</Text>
+      <AppHeader title="Demo Lab" layout="left" titleStyle={styles.title} onBack={() => navigation.goBack()} />
       <Text style={styles.sub}>
         Presets and custom readings run through the same pipeline as a paired
         wearable: preprocessing → features → model → explanation → risk.

@@ -9,6 +9,7 @@ import {
   Sparkles,
   Video,
 } from "lucide-react-native";
+import { AppHeader } from "../components/AppHeader";
 import { Card } from "../components/Card";
 import { IconCircle } from "../components/IconCircle";
 import { LoadingState } from "../components/LoadingState";
@@ -54,7 +55,7 @@ const GENERAL_TIPS = [
   },
 ];
 
-export function RecommendationsScreen(_: Props) {
+export function RecommendationsScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { prediction, loading } = useRisk(true);
@@ -70,9 +71,12 @@ export function RecommendationsScreen(_: Props) {
         { paddingTop: insets.top + spacing.base },
       ]}
     >
-      <PageTitle
+      <AppHeader
         title="Recommendations"
         subtitle="Based on recent wearable signals"
+        layout="left"
+        titleStyle={styles.title}
+        onBack={() => navigation.goBack()}
       />
 
       {loading && !prediction ? (
@@ -140,6 +144,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.card,
   },
   heroText: { flex: 1, gap: 1 },
+  title: { ...typography.title, color: colors.textPrimary },
   heroTitle: { ...typography.section, color: colors.textPrimary },
   heroSub: { ...typography.bodySmall, color: colors.textSecondary },
   note: { ...typography.caption, color: colors.textTertiary, textAlign: "center" },

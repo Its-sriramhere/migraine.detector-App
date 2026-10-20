@@ -2,6 +2,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { AppHeader } from "../components/AppHeader";
 import { MetricChart } from "../components/MetricChart";
 import { LoadingState } from "../components/LoadingState";
 import { colors } from "../constants/colors";
@@ -20,7 +21,7 @@ const RANGES = [
   { label: "30D", hours: 24 * 30 },
 ];
 
-export function SensorDetailsScreen({ route }: Props) {
+export function SensorDetailsScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { sensorHistory, loading } = useSensorData(user?.id ?? null, "live");
@@ -47,7 +48,7 @@ export function SensorDetailsScreen({ route }: Props) {
         { paddingTop: insets.top + spacing.base },
       ]}
     >
-      <Text style={styles.title}>{metric.replace("_", " ")}</Text>
+      <AppHeader title={metric.replace("_", " ")} layout="left" titleStyle={styles.title} onBack={() => navigation.goBack()} />
 
       <View style={styles.tabs}>
         {RANGES.map((r, index) => {

@@ -3,6 +3,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { AppHeader } from "../components/AppHeader";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { colors } from "../constants/colors";
@@ -27,7 +28,7 @@ const DEFAULT_PREFS: Prefs = {
   emailOnHighRisk: false,
 };
 
-export function SettingsScreen(_: Props) {
+export function SettingsScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
@@ -76,7 +77,7 @@ export function SettingsScreen(_: Props) {
         { paddingTop: insets.top + spacing.base },
       ]}
     >
-      <Text style={styles.title}>Settings</Text>
+      <AppHeader title="Settings" layout="left" titleStyle={styles.title} onBack={() => navigation.goBack()} />
       <Card>
         <Text style={styles.name}>{user?.name ?? "—"}</Text>
         <Text style={styles.sub}>{user?.email ?? "—"}</Text>

@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppLogo } from "../components/AppLogo";
+import { BackButton } from "../components/BackButton";
 import { ConsentCheck } from "../components/ConsentCheck";
 import { Input } from "../components/Input";
 import { PageTitle } from "../components/PageTitle";
@@ -86,6 +87,7 @@ export function RegisterScreen({ navigation }: Props) {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.brand}>
+          <BackButton onPress={() => navigation.goBack()} label="Back to sign in" />
           <AppLogo size={52} />
         </View>
 
@@ -152,7 +154,7 @@ export function RegisterScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.xl, flexGrow: 1, justifyContent: "center" },
-  brand: { alignItems: "center", marginBottom: spacing.base },
+  brand: { alignItems: "center", marginBottom: spacing.base, gap: spacing.sm },
   link: {
     color: colors.primary,
     fontWeight: "600",

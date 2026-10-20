@@ -3,6 +3,7 @@ import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BatteryCharging, Check, RefreshCw, Watch } from "lucide-react-native";
+import { AppHeader } from "../components/AppHeader";
 import { Card } from "../components/Card";
 import { IconCircle } from "../components/IconCircle";
 import { PrimaryButton } from "../components/PrimaryButton";
@@ -16,7 +17,7 @@ import type { RootStackParamList } from "../navigation/types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Watch">;
 
-export function WatchScreen(_: Props) {
+export function WatchScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const [simulated, setSimulated] = useState(true);
   const watch = useWatch({ simulated });
@@ -55,7 +56,7 @@ export function WatchScreen(_: Props) {
         { paddingTop: insets.top + spacing.base },
       ]}
     >
-      <Text style={styles.title}>Wearable Connection</Text>
+      <AppHeader title="Wearable Connection" layout="left" titleStyle={styles.title} onBack={() => navigation.goBack()} />
 
       <View style={styles.hero}>
         <WatchMock width={130} />

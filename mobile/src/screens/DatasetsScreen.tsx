@@ -2,6 +2,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { AppHeader } from "../components/AppHeader";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { LoadingState } from "../components/LoadingState";
@@ -28,7 +29,7 @@ function kv(label: string, value: unknown) {
   );
 }
 
-export function DatasetsScreen(_: Props) {
+export function DatasetsScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { data, thresholds, loading, error, reload } = useDatasets(true);
   const [busy, setBusy] = useState<string | null>(null);
@@ -80,7 +81,7 @@ export function DatasetsScreen(_: Props) {
         { paddingTop: insets.top + spacing.base },
       ]}
     >
-      <Text style={styles.title}>Datasets & thresholds</Text>
+      <AppHeader title="Datasets & thresholds" layout="left" titleStyle={styles.title} onBack={() => navigation.goBack()} />
       <Text style={styles.sub}>
         The bundled migraine datasets drive the deviation cutoffs and baselines
         the risk engine uses. Recalibrating hot-reloads the live engine.

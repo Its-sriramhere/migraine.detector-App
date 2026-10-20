@@ -1,6 +1,7 @@
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { AppHeader } from "../components/AppHeader";
 import { AdviceList } from "../components/AdviceList";
 import { Card } from "../components/Card";
 import { ContributionBars } from "../components/ContributionBars";
@@ -15,7 +16,7 @@ import type { RootStackParamList } from "../navigation/types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Explanation">;
 
-export function ExplanationScreen({ route }: Props) {
+export function ExplanationScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
   const { prediction } = useRisk(true);
   const { data, loading, error } = useExplanation(route.params.predictionId);
@@ -43,7 +44,7 @@ export function ExplanationScreen({ route }: Props) {
         { paddingTop: insets.top + spacing.base },
       ]}
     >
-      <Text style={styles.title}>Model explanation</Text>
+      <AppHeader title="Model explanation" layout="left" titleStyle={styles.title} onBack={() => navigation.goBack()} />
       <View style={styles.headRow}>
         <Text style={styles.score}>{Math.round(data.risk_score)}%</Text>
         <RiskBadge level={data.risk_level} />

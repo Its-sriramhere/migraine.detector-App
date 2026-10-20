@@ -1,6 +1,7 @@
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { BackButton } from "../components/BackButton";
 import { Button } from "../components/Button";
 import { colors } from "../constants/colors";
 import { spacing } from "../constants/spacing";
@@ -15,6 +16,7 @@ export function ForgotPasswordScreen({ navigation }: Props) {
     <View
       style={[styles.wrap, { paddingTop: insets.top + spacing.base }]}
     >
+      <BackButton onPress={() => navigation.goBack()} label="Back to sign in" />
       <Text style={styles.title}>Reset password</Text>
       <Text style={styles.sub}>
         Password reset is handled by the backend team in this MVP. Please

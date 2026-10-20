@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Activity, AlertTriangle, ArrowUpRight, Droplets, Heart, Moon } from "lucide-react-native";
+import { AppHeader } from "../components/AppHeader";
 import { AlertCard } from "../components/AlertCard";
 import { Card } from "../components/Card";
 import { IconCircle } from "../components/IconCircle";
@@ -127,7 +128,7 @@ export function AlertsScreen({ navigation }: Props) {
         { paddingTop: insets.top + spacing.base },
       ]}
     >
-      <PageTitle title="Insights & Alerts" />
+      <AppHeader title="Insights & Alerts" layout="left" titleStyle={styles.pageTitle} onBack={() => navigation.goBack()} />
 
       <View style={styles.tabs}>
         {TABS.map((t) => {
@@ -254,6 +255,7 @@ export function AlertsScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.base, gap: spacing.md },
+  pageTitle: { ...typography.title, color: colors.textPrimary },
   tabs: { flexDirection: "row", gap: spacing.sm },
   tab: {
     flex: 1,
