@@ -26,7 +26,7 @@ export function useAlerts(autoLoad = true) {
   }, []);
 
   useEffect(() => {
-    if (autoLoad) void load();
+    if (autoLoad) void Promise.resolve().then(load);
   }, [autoLoad, load]);
 
   const acknowledge = useCallback(async (id: number) => {

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
 import { colors } from "../constants/colors";
 import { radius } from "../constants/radius";
@@ -52,7 +52,7 @@ function ContributionBar({
   ratio: number;
   delay: number;
 }) {
-  const grow = useRef(new Animated.Value(0)).current;
+  const [grow] = useState(() => new Animated.Value(0));
   const positive = contribution >= 0;
 
   useEffect(() => {

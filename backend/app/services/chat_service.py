@@ -13,6 +13,8 @@ app does not have. Only open-ended wellness questions may reach the model.
 from __future__ import annotations
 
 import re
+import math
+import unicodedata
 from typing import Any, Iterable, Optional
 
 APP_NAME = "Migraine Detector"
@@ -272,8 +274,9 @@ APP_FEATURES: list[dict[str, Any]] = [
             "Follow a clinician-provided care plan rather than an app alert for medication.",
         ],
         "note": (
-            "Alerts are simulated. The app does not send real medical "
-            "warnings and never decides treatment for you."
+            "Alerts reflect prototype model estimates and can include labelled "
+            "developer tests. They are not clinical warnings and never decide "
+            "treatment for you."
         ),
         "keywords": [
             "alert screen", "alerts", "notification", "early warning", "reminder",
@@ -329,8 +332,9 @@ APP_FEATURES: list[dict[str, Any]] = [
             "Use the simulated wearable when you have no hardware to hand.",
         ],
         "note": (
-            "Bluetooth needs a development build of the app. In a store "
-            "install the wearable link uses the simulated device instead."
+            "Expo Go uses the simulated device because it does not include "
+            "the Bluetooth native module. An installed native build can pair "
+            "a compatible wearable."
         ),
         "keywords": [
             "connect watch", "connect wearable", "pair watch", "garmin", "sync data",
@@ -455,12 +459,28 @@ def find_feature_for_question(question: str, topic_id: Optional[str] = None) -> 
         if chosen:
             return chosen
 
-    q = re.sub(r"\s+", " ", str(question or "").lower().strip())
+    q = normalize_question(question)
+    # Educational questions should not accidentally match app navigation
+    # words such as 'prevent', 'history', or 'prediction'.
+    if re.search(r"\b(what (is|does)|meaning of|define|how does|why does)\b", q) and not re.search(
+        r"\b(app|screen|chart|score|model|predict|prediction|work)\b", q
+    ):
+        return None
     if not _APP_INTENT.search(q):
         return None
 
     if _ACCURACY.search(q):
         return get_feature("limitations")
+
+    # Strong, specific intent takes priority over loose keyword scores.
+    for pattern, feature_id in [
+        (r"\b(connect|pair|bluetooth|sync|wearable|watch|device)\b", "watch"),
+        (r"\b(log|record)\b.*\b(migraine|episode|symptom|headache)\b", "history"),
+        (r"\b(sleep stages|sleep analytics|sleep quality)\b", "sleep"),
+        (r"\b(why this risk|risk score|prediction screen|prediction model)\b", "prediction"),
+    ]:
+        if re.search(pattern, q):
+            return get_feature(feature_id)
 
     best: Optional[dict[str, Any]] = None
     best_score = 0
@@ -490,7 +510,7 @@ def find_feature_for_question(question: str, topic_id: Optional[str] = None) -> 
             best = feature
 
     if not best:
-        return get_feature("overview")
+        return None
     return best
 
 
@@ -544,7 +564,7 @@ def safe_metrics(payload: Any) -> Optional[dict[str, float]]:
         value = payload.get(key)
         if isinstance(value, (int, float)) and not isinstance(value, bool):
             number = float(value)
-            if low <= number <= high:
+            if math.isfinite(number) and low <= number <= high:
                 out[key] = number
     return out or None
 
@@ -581,21 +601,21 @@ _WELLNESS: list[tuple[str, str]] = [
         "estimates are not a clinical sleep study.",
     ),
     (
-        r"\b(hydrat|water|drink|dehydration)\b",
+        r"\b(hydrat\w*|water|drink\w*|dehydrat\w*)\b",
         "Drink water regularly, especially in hot weather or with activity. "
         "Dehydration can be a headache trigger for some people; drinking extra "
         "water is not a guaranteed treatment for a migraine. Use Migraine "
         "History to look for your own patterns.",
     ),
     (
-        r"\b(trigger|prevent|avoid|food|caffeine)\b",
+        r"\b(trigger\w*|prevent\w*|avoid\w*|food\w*|caffeine)\b",
         "Potential migraine triggers vary from person to person. Changes in "
         "sleep, missed meals, stress, dehydration and certain foods can be "
         "associated with attacks for some people. Keep a diary and compare "
         "entries over several weeks; a correlation does not prove cause.",
     ),
     (
-        r"\b(stress|anxious|breath|relax)\b",
+        r"\b(stress\w*|anxious|breath\w*|relax\w*)\b",
         "You could try a short breathing break, gentle stretching and a quieter "
         "environment if those feel helpful. The Insights & Alerts screen "
         "illustrates supportive self-care suggestions, but they are not "
@@ -628,10 +648,13 @@ _FALLBACK = (
 
 def offline_answer(question: str, topic_id: Optional[str] = None) -> dict[str, Any]:
     """Deterministic answer from the built-in guide and wellness FAQ."""
-    q = str(question or "").lower()
+    q = normalize_question(question)
 
     if has_urgent_symptoms(q):
         return {"reply": EMERGENCY_TEXT, "mode": "safety", "topic_id": None}
+
+    if re.search(r"\b(what is|what's|tell me|why is) my (current )?(risk|score|hrv|blood pressure|spo2|sleep)\b", q):
+        return {"reply": "I don't have access to your personal readings in this conversation. Open Home for the latest values, Migraine Prediction for the risk estimate, or Monitoring for the measurement history. Tell me which measurement you want explained; I can describe its meaning without guessing your results.", "mode": "guide", "topic_id": "dashboard"}
 
     feature = find_feature_for_question(q, topic_id)
     if feature:
@@ -641,11 +664,37 @@ def offline_answer(question: str, topic_id: Optional[str] = None) -> dict[str, A
             "topic_id": feature["id"],
         }
 
+    if re.fullmatch(r"(hi|hello|hey|good morning|good evening)[!. ]*", q):
+        return {"reply": "Hi, I'm Mira. Ask me about a screen, connecting your watch, or a migraine wellness topic. What would you like help with?", "mode": "demo", "topic_id": None}
+
     for pattern, reply in _WELLNESS:
         if re.search(pattern, q):
             return {"reply": reply, "mode": "demo", "topic_id": None}
 
     return {"reply": _FALLBACK, "mode": "demo", "topic_id": None}
+
+
+def normalize_question(question: str) -> str:
+    q = unicodedata.normalize("NFKC", str(question or "")).lower().replace("’", "'")
+    for typo, word in {"montoring": "monitoring", "symptomps": "symptoms", "bluethooth": "bluetooth", "migrane": "migraine", "heartrate": "heart rate", "sp02": "spo2"}.items():
+        q = re.sub(rf"\b{typo}\b", word, q)
+    return re.sub(r"\s+", " ", q).strip()
+
+
+def answer_with_context(messages: list[dict[str, str]], topic_id: Optional[str] = None) -> dict[str, Any]:
+    question = messages[-1]["content"]
+    q = normalize_question(question)
+    # Only borrow context for explicit short follow-ups. A new health
+    # question must not inherit an unrelated previously selected topic.
+    if not topic_id and re.fullmatch(r"(tell me more|explain (it|that)|how (do|can) i (open|use|find) it|where is (it|that))[?.! ]*", q):
+        for message in reversed(messages[:-1]):
+            if message["role"] != "user":
+                continue
+            feature = find_feature_for_question(message["content"])
+            if feature:
+                topic_id = feature["id"]
+                break
+    return offline_answer(question, topic_id)
 
 
 def feature_payload() -> list[dict[str, Any]]:

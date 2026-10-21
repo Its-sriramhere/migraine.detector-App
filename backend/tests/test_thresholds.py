@@ -146,14 +146,12 @@ def test_sms_quota_cap_and_notifications_log(tmp_path, monkeypatch):
 
     original_enabled = notifications.settings.SMS_ENABLED
     original_max = notifications.settings.SMS_MAX_SENDS
-    original_to = notifications.settings.ALERT_SMS_TO
     try:
         from app.db.seed import init_db
 
         init_db()
 
         notifications.settings.SMS_ENABLED = True
-        notifications.settings.ALERT_SMS_TO = "+919360516302"
 
         from sqlalchemy import func, select
 
@@ -164,24 +162,24 @@ def test_sms_quota_cap_and_notifications_log(tmp_path, monkeypatch):
         try:
             # the real-send count may contain rows left by a previous run of
             # this suite against the shared temp DB, so allow one further send.
-            # Every twilio attempt (sent OR failed) counts toward the cap.
+            # Every attempt (sent OR failed) counts toward the cap.
             existing_sends = db.execute(
                 select(func.count()).select_from(NotificationLog).where(
-                    NotificationLog.provider == "twilio")
+                    NotificationLog.provider == "mock")
             ).scalar() or 0
         finally:
             db.close()
         notifications.settings.SMS_MAX_SENDS = existing_sends + 1
         max_cap = notifications.settings.SMS_MAX_SENDS
 
-        class _StubTwilio(notifications.NotificationProvider):
-            name = "twilio"
+        class _StubProvider(notifications.NotificationProvider):
+            name = "mock"
 
             def send(self, recipient, message, level):
                 return notifications.NotificationReceipt(
                     status="sent", provider=self.name, detail="stubbed send")
 
-        monkeypatch.setattr(notifications, "_provider", lambda: _StubTwilio())
+        monkeypatch.setattr(notifications, "_provider", lambda: _StubProvider())
 
         db = SessionLocal()
         try:
@@ -211,7 +209,6 @@ def test_sms_quota_cap_and_notifications_log(tmp_path, monkeypatch):
     finally:
         notifications.settings.SMS_ENABLED = original_enabled
         notifications.settings.SMS_MAX_SENDS = original_max
-        notifications.settings.ALERT_SMS_TO = original_to
 
 
 def test_datasets_api_calibrate_and_download(tmp_path, monkeypatch):

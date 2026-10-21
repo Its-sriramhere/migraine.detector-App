@@ -6,6 +6,8 @@ import { AlertsScreen } from "../screens/AlertsScreen";
 import { AssessmentScreen } from "../screens/AssessmentScreen";
 import { DatasetsScreen } from "../screens/DatasetsScreen";
 import { DemoScreen } from "../screens/DemoScreen";
+import { DeveloperScreen } from "../screens/DeveloperScreen";
+import { BackendScreen } from "../screens/BackendScreen";
 import { ExplanationScreen } from "../screens/ExplanationScreen";
 import { HistoryScreen } from "../screens/HistoryScreen";
 import { OnboardingScreen } from "../screens/OnboardingScreen";
@@ -42,6 +44,7 @@ export function RootNavigator() {
         {/* Available before sign-in too, so the policy can be read while
             creating an account. */}
         <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+        <Stack.Screen name="Backend" component={BackendScreen} />
         {user ? (
           <>
             <Stack.Screen name="Main" component={MainTabs} />
@@ -55,6 +58,7 @@ export function RootNavigator() {
             />
             <Stack.Screen name="Alerts" component={AlertsScreen} />
             <Stack.Screen name="Demo" component={DemoScreen} />
+            <Stack.Screen name="Developer" component={DeveloperScreen} />
             <Stack.Screen name="Watch" component={WatchScreen} />
             <Stack.Screen
               name="Recommendations"

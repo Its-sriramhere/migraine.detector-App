@@ -1,4 +1,5 @@
 import { Platform } from "react-native";
+import { isRunningInExpoGo, requireOptionalNativeModule } from "expo";
 import { riskColors } from "../constants/colors";
 import type { RiskLevel } from "../types";
 
@@ -16,6 +17,14 @@ let unavailable = false;
 async function loadNotifications(): Promise<NotificationsModule | null> {
   if (unavailable) return null;
   if (cached) return cached;
+  // Importing the whole notifications barrel eagerly loads native modules,
+  // including topic subscriptions that are absent in Android Expo Go. Check
+  // the runtime before the dynamic import; catching afterwards is too late
+  // for Metro's module-evaluation error overlay.
+  if (Platform.OS === "android" && (isRunningInExpoGo() || !requireOptionalNativeModule("ExpoTopicSubscriptionModule"))) {
+    unavailable = true;
+    return null;
+  }
   try {
     const mod = await import("expo-notifications");
     mod.setNotificationHandler({

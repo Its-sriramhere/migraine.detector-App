@@ -92,6 +92,7 @@ export function SettingsScreen({ navigation }: Props) {
       </Card>
 
       <Text style={styles.section}>Preferences</Text>
+      <Button title="Backend connection" onPress={() => navigation.navigate("Backend")} />
       <Card>
         {rows.map((row) => (
           <View key={row.key} style={styles.row}>

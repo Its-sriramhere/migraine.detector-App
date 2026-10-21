@@ -199,10 +199,6 @@ def list_datasets(db: Session = Depends(get_db),
         "sms": {
             "provider": settings.SMS_PROVIDER,
             "enabled": settings.SMS_ENABLED,
-            "recipient": settings.ALERT_SMS_TO or "unset",
-            "level": settings.ALERT_SMS_LEVEL,
-            "max_sends": settings.SMS_MAX_SENDS,
-            "sends_used": sms_used,
         },
         "supabase": {
             "enabled": bool(settings.SUPABASE_URL and settings.SUPABASE_SERVICE_ROLE_KEY),

@@ -7,7 +7,6 @@ import { AppHeader } from "../components/AppHeader";
 import { AlertCard } from "../components/AlertCard";
 import { Card } from "../components/Card";
 import { IconCircle } from "../components/IconCircle";
-import { PageTitle } from "../components/PageTitle";
 import { PrimaryButton } from "../components/PrimaryButton";
 import { LoadingState } from "../components/LoadingState";
 import { ErrorState } from "../components/States";
@@ -165,7 +164,7 @@ export function AlertsScreen({ navigation }: Props) {
                 </IconCircle>
                 <View style={styles.insightHead}>
                   <Text style={[styles.insightTitle, { color: rc.text }]}>
-                    {riskHeadline(level).replace(" RISK", "")} signal detected
+                    {prediction ? `${riskHeadline(level).replace(" RISK", "")} signal detected` : "Waiting for wearable data"}
                   </Text>
                   <Text style={styles.insightSub}>
                     Based on your most recent wearable signals

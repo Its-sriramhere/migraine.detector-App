@@ -26,7 +26,7 @@ export function useRisk(autoLoad = true) {
   }, []);
 
   useEffect(() => {
-    if (autoLoad) void load();
+    if (autoLoad) void Promise.resolve().then(load);
   }, [autoLoad, load]);
 
   return { prediction, history, loading, error, reload: load };
@@ -39,15 +39,17 @@ export function useExplanation(predictionId: number | null) {
 
   useEffect(() => {
     if (!predictionId) return;
-    setLoading(true);
-    setError(null);
-    riskService
+    void Promise.resolve().then(() => {
+      setLoading(true);
+      setError(null);
+      return riskService
       .getExplanation(predictionId)
       .then(setData)
       .catch((e) =>
         setError(e instanceof Error ? e.message : "Unable to load."),
       )
       .finally(() => setLoading(false));
+    });
   }, [predictionId]);
 
   return { data, loading, error };

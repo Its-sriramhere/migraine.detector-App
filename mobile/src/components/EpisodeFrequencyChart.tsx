@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
 import { themeNew } from "../constants/colors";
 import { spacing } from "../constants/spacing";
@@ -20,7 +20,7 @@ const MAX_BAR = 65;
  */
 export function EpisodeFrequencyChart({ days }: { days: EpisodeDay[] }) {
   const peak = Math.max(1, ...days.map((d) => d.count));
-  const grow = useRef(new Animated.Value(0)).current;
+  const [grow] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     grow.setValue(0);
@@ -31,7 +31,7 @@ export function EpisodeFrequencyChart({ days }: { days: EpisodeDay[] }) {
     }).start();
   }, [days, grow]);
 
-  if (days.length === 0) {
+  if (days.length === 0 || days.every((day) => day.count === 0)) {
     return (
       <View style={styles.placeholder}>
         <Text style={styles.placeholderText}>
@@ -46,7 +46,7 @@ export function EpisodeFrequencyChart({ days }: { days: EpisodeDay[] }) {
       <View style={styles.plot}>
         {days.map((d) => {
           const ratio = d.count / peak;
-          const target = Math.max(8, ratio * MAX_BAR);
+          const target = d.count > 0 ? Math.max(8, ratio * MAX_BAR) : 0;
           const isPeak = d.count === peak && d.count > 0;
           return (
             <View key={d.label} style={styles.column}>

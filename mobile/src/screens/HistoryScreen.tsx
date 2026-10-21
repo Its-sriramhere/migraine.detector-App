@@ -37,10 +37,6 @@ function startOfMonth(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), 1);
 }
 
-function monthKey(d: Date) {
-  return `${d.getFullYear()}-${d.getMonth()}`;
-}
-
 function sameMonth(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
 }
@@ -86,7 +82,7 @@ export function HistoryScreen({ navigation }: Props) {
   }, []);
 
   useEffect(() => {
-    void load();
+    void Promise.resolve().then(load);
   }, [load]);
 
   const inMonth = useMemo(

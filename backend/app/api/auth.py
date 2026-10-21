@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from ..api.deps import get_current_user
 from ..core.security import create_access_token, hash_password, verify_password
+from ..core.config import settings
 from ..db.session import get_db
 from ..models import User
 from ..schemas import LoginRequest, RegisterRequest, TokenResponse, UserOut
@@ -12,6 +13,8 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 def register(body: RegisterRequest, db: Session = Depends(get_db)):
+    if body.email.lower() in settings.developer_emails:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "This account is reserved for developer provisioning")
     existing = db.query(User).filter(User.email == body.email.lower()).first()
     if existing:
         raise HTTPException(status.HTTP_409_CONFLICT, "An account with this email already exists")

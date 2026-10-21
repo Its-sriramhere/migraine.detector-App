@@ -1,4 +1,4 @@
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { NativeStackNavigationProp, NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useState } from "react";
 import {
   KeyboardAvoidingView,
@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppLogo } from "../components/AppLogo";
+import { AmbientBackground } from "../components/AmbientBackground";
 import { Input } from "../components/Input";
 import { PageTitle } from "../components/PageTitle";
 import { PrimaryButton } from "../components/PrimaryButton";
@@ -18,7 +19,7 @@ import { colors } from "../constants/colors";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
 import { useAuth } from "../hooks/useAuth";
-import type { AuthStackParamList } from "../navigation/types";
+import type { AuthStackParamList, RootStackParamList } from "../navigation/types";
 import { login } from "../services/authService";
 import { ApiError } from "../services/api";
 import { validateLogin } from "../utils/validation";
@@ -68,6 +69,7 @@ export function LoginScreen({ navigation }: Props) {
         <View style={styles.brand}>
           <AppLogo size={52} />
         </View>
+        <AmbientBackground />
 
         <PageTitle
           title="Welcome back"
@@ -105,6 +107,9 @@ export function LoginScreen({ navigation }: Props) {
             <Text style={styles.link}>Forgot password?</Text>
           </Pressable>
         </View>
+        <Pressable accessibilityRole="button" onPress={() => navigation.getParent<NativeStackNavigationProp<RootStackParamList>>()?.navigate("Backend")}>
+          <Text style={[styles.link, { textAlign: "center", marginTop: 12 }]}>Backend connection</Text>
+        </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
   );

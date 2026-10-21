@@ -1,7 +1,6 @@
 import { StyleSheet, Text, View } from "react-native";
-import { colors, riskColors } from "../constants/colors";
+import { riskColors } from "../constants/colors";
 import { radius } from "../constants/radius";
-import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
 
 export function RiskBadge({

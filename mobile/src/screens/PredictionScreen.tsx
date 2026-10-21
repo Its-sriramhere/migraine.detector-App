@@ -9,6 +9,7 @@ import { LoadingState } from "../components/LoadingState";
 import { MiraHost } from "../components/MiraHost";
 import { RiskTrendChart } from "../components/RiskTrendChart";
 import { SectionHeader } from "../components/SectionHeader";
+import { AmbientBackground } from "../components/AmbientBackground";
 import { ErrorState } from "../components/States";
 import { themeNew } from "../constants/colors";
 import { radius } from "../constants/radius";
@@ -106,6 +107,7 @@ export function PredictionScreen({ navigation }: Props) {
         subtitle="Personalized early-warning overview"
         onBack={() => navigation.goBack()}
       />
+      <AmbientBackground />
 
       <View style={styles.card}>
         <Text style={styles.eyebrow}>ESTIMATED RISK • NEXT 24H</Text>

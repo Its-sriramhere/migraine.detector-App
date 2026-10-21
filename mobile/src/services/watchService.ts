@@ -1,4 +1,5 @@
 import { getBleManager, bleUnavailableReason } from "./ble/bleClient";
+import { PermissionsAndroid, Platform } from "react-native";
 import { api } from "./api";
 import {
   ALERT_CHAR_UUID,
@@ -50,8 +51,19 @@ class WatchService {
 
   /** Scan for nearby watches advertising our service (or standard HRS). */
   async scan(timeoutMs = 8000): Promise<DiscoveredWatch[]> {
+    if (Platform.OS === "android") {
+      const permissions = Number(Platform.Version) >= 31
+        ? [PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN, PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT]
+        : [PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION];
+      const granted = await PermissionsAndroid.requestMultiple(permissions);
+      if (permissions.some((permission) => granted[permission] !== PermissionsAndroid.RESULTS.GRANTED)) {
+        throw new Error("Allow Nearby devices permission in Android Settings to scan for wearables.");
+      }
+    }
     const manager = getBleManager();
-    if (!manager) return [];
+    if (!manager) throw new Error(this.unavailableReason ?? "Bluetooth is unavailable on this device.");
+    const state = await manager.state();
+    if (state !== "PoweredOn") throw new Error(state === "Unsupported" ? "This device does not support Bluetooth LE. Use the simulated wearable for testing." : "Turn on Bluetooth before scanning for wearables.");
     const found = new Map<string, DiscoveredWatch>();
     await manager.startDeviceScan(
       [WATCH_SERVICE_UUID, "0000180d-0000-1000-8000-00805f9b34fb"],
@@ -174,7 +186,9 @@ class WatchService {
     this.subscription?.remove();
     this.subscription = null;
     this.listeners.clear();
+    const device = this.device;
     this.device = null;
+    if (device) void device.cancelConnection().catch(() => undefined);
   }
 }
 

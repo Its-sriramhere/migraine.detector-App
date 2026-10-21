@@ -33,22 +33,28 @@ export function useWatch(options?: { simulated?: boolean }) {
   const simulator = useRef<ReturnType<typeof createSimulatedWatch> | null>(null);
 
   useEffect(() => {
+    let active = true;
     if (!simulated) {
-      if (!watchService.available) {
-        setState("unavailable");
-        setError(watchService.unavailableReason);
-      }
-      return;
+      void Promise.resolve().then(() => {
+        if (!active) return;
+        setVitals(null); setInfo(null); setDevices([]);
+        setState(watchService.available ? "disconnected" : "unavailable");
+        setError(watchService.available ? null : watchService.unavailableReason);
+      });
+      return () => { active = false; cleanup.current?.(); watchService.disconnect(); };
     }
     const watch = createSimulatedWatch();
     simulator.current = watch;
     watch.connect().then(() => {
+      if (!active) return;
       setInfo(watch.info());
       setState("connected");
       setError(null);
       cleanup.current = watch.subscribe(setVitals);
+      watch.emit();
     });
     return () => {
+      active = false;
       cleanup.current?.();
       cleanup.current = null;
       simulator.current = null;

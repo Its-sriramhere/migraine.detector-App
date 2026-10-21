@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Migraine Detector",
+    "name": "Migraine Detector Beta",
     "slug": "migraine-detector",
     "scheme": "migrainedetector",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/brand-icon.png",
     "userInterfaceStyle": "light",
     "backgroundColor": "#FFFFFF",
     "ios": {
@@ -16,11 +16,13 @@
       }
     },
     "android": {
+      "package": "com.migrainedetector.beta",
+      "versionCode": 1,
+      "version": "1.0.0-beta.1",
       "adaptiveIcon": {
-        "backgroundColor": "#0A2540",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#F8FBFF",
+        "foregroundImage": "./assets/brand-adaptive.png",
+        "monochromeImage": "./assets/brand-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
@@ -36,6 +38,7 @@
       "expo-secure-store",
       "@react-native-community/datetimepicker",
       "expo-sharing",
+      "./plugins/withReleaseSigning",
       [
         "react-native-ble-plx",
         {

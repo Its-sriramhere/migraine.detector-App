@@ -13,7 +13,6 @@ import { AppHeader } from "../components/AppHeader";
 import { Card } from "../components/Card";
 import { IconCircle } from "../components/IconCircle";
 import { LoadingState } from "../components/LoadingState";
-import { PageTitle } from "../components/PageTitle";
 import { RecommendationCard } from "../components/RecommendationCard";
 import { StatusCard } from "../components/StatusCard";
 import { colors } from "../constants/colors";

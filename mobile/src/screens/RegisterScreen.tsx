@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppLogo } from "../components/AppLogo";
+import { AmbientBackground } from "../components/AmbientBackground";
 import { BackButton } from "../components/BackButton";
 import { ConsentCheck } from "../components/ConsentCheck";
 import { Input } from "../components/Input";
@@ -90,6 +91,7 @@ export function RegisterScreen({ navigation }: Props) {
           <BackButton onPress={() => navigation.goBack()} label="Back to sign in" />
           <AppLogo size={52} />
         </View>
+        <AmbientBackground />
 
         <PageTitle
           title="Create account"

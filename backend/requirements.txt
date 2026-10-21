@@ -8,6 +8,5 @@ bcrypt>=4.1
 python-multipart>=0.0.9
 email-validator>=2.1
 websockets>=12.0
-twilio>=9.0        # real SMS provider (optional; mock works without it)
 psycopg2-binary>=2.9  # Supabase Postgres driver
 mangum>=0.22       # ASGI-to-WSGI adapter for Vercel serverless

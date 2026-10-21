@@ -1,10 +1,10 @@
-import { Pressable, StyleSheet } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { themeNew } from "../constants/colors";
-import { MiraMark } from "./MiraMark";
+import { AppLogo } from "./AppLogo";
 
 /**
- * Mira floating assistant button from the Figma "01 Mira" frame: the brand
- * gradient disc with the sparkle, plus a green availability dot.
+ * Mira floating button uses the same neural brand mark as the splash screen,
+ * with a green availability dot.
  *
  * It deliberately overlaps the content above the bottom navigation, the way
  * the Figma frame shows it.
@@ -33,7 +33,8 @@ export function MiraFab({
         pressed && styles.pressed,
       ]}
     >
-      <MiraMark size={SIZE} withStatus />
+      <AppLogo size={SIZE} />
+      <View pointerEvents="none" style={styles.status} />
     </Pressable>
   );
 }
@@ -53,4 +54,15 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
   },
   pressed: { transform: [{ scale: 0.92 }], opacity: 0.92 },
+  status: {
+    position: "absolute",
+    top: 5,
+    right: 5,
+    width: 11,
+    height: 11,
+    borderRadius: 6,
+    backgroundColor: themeNew.miraAvailable,
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+  },
 });

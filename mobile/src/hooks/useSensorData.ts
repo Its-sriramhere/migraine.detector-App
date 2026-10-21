@@ -80,7 +80,7 @@ export function useSensorData(
   }, []);
 
   useEffect(() => {
-    refresh();
+    void Promise.resolve().then(refresh);
     const id = setInterval(refresh, config.refreshIntervalMs);
     return () => clearInterval(id);
   }, [refresh]);

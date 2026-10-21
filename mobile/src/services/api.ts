@@ -1,7 +1,5 @@
 import * as SecureStore from "expo-secure-store";
-import { config } from "../constants/config";
-
-export const API_BASE = config.apiBaseUrl;
+import { config, initializeBackend } from "../constants/config";
 
 export class ApiError extends Error {
   status: number;
@@ -12,6 +10,7 @@ export class ApiError extends Error {
 }
 
 export async function getToken(): Promise<string | null> {
+  await initializeBackend();
   try {
     return await SecureStore.getItemAsync(config.tokenKey);
   } catch {
@@ -37,10 +36,16 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const t = await getToken();
   if (t) headers.set("Authorization", `Bearer ${t}`);
 
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers,
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), path === "/chat" ? 55000 : 15000);
+  let response: Response;
+  try {
+    response = await fetch(`${config.apiBaseUrl}${path}`, { ...options, headers, signal: controller.signal });
+  } catch (error) {
+    throw new ApiError(0, error instanceof Error && error.name === "AbortError"
+      ? "The backend timed out. Check Backend connection and make sure the server is running."
+      : "Cannot reach the backend. Check your Wi-Fi and the address under Backend connection.");
+  } finally { clearTimeout(timeout); }
   if (response.status === 401) {
     await clearToken();
   }

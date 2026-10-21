@@ -1,0 +1,15 @@
+import { useEffect, useState, type ReactNode } from "react";
+import { Animated } from "react-native";
+import { useReducedMotion } from "../hooks/useReducedMotion";
+
+/** Brief, native-driver reply entrance without retyping or delaying reading. */
+export function MessageReveal({ children }: { children: ReactNode }) {
+  const [progress] = useState(() => new Animated.Value(0));
+  const reduced = useReducedMotion();
+  useEffect(() => {
+    const animation = Animated.timing(progress, { toValue: 1, duration: reduced ? 0 : 220, useNativeDriver: true });
+    animation.start();
+    return () => animation.stop();
+  }, [progress, reduced]);
+  return <Animated.View style={{ opacity: progress, transform: [{ translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [6, 0] }) }] }}>{children}</Animated.View>;
+}

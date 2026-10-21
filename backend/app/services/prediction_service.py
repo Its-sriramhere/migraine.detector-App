@@ -250,7 +250,7 @@ def _log_cooldown_skip(db: Session, prediction: Prediction) -> None:
             alert_id=None,
             kind="sms",
             provider="cooldown",
-            recipient=settings.ALERT_SMS_TO or "unset",
+            recipient="app-notifications",
             risk_level=prediction.risk_level,
             status="skipped",
             detail=f"within {MODERATE_COOLDOWN_MINUTES}-minute alert cooldown — no duplicate alert created",

@@ -1,7 +1,6 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
 import type { NavigationProp } from "@react-navigation/native";
-import { Activity, ClipboardList, House, User } from "lucide-react-native";
 import { CenteredTabBar } from "../components/CenteredTabBar";
 import { MiraHost } from "../components/MiraHost";
 import { HomeScreen } from "../screens/HomeScreen";

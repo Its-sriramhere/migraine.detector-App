@@ -1,19 +1,20 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import { Animated, StyleSheet, View } from "react-native";
 import { themeNew } from "../constants/colors";
+import { useReducedMotion } from "../hooks/useReducedMotion";
 
 /**
  * Three-dot "Mira is typing" indicator. The dots rise and fall in sequence
  * so a reply that comes back instantly still reads as a considered answer.
  */
 export function TypingDots({ color = themeNew.primary }: { color?: string }) {
-  const dots = [useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current];
+  const [dots] = useState(() => [new Animated.Value(0), new Animated.Value(0), new Animated.Value(0)]);
+  const reduced = useReducedMotion();
 
   useEffect(() => {
-    const loops = dots.map((value, index) =>
-      Animated.loop(
+    if (reduced) { dots.forEach((dot) => dot.setValue(1)); return; }
+    const loop = Animated.loop(Animated.stagger(150, dots.map((value) =>
         Animated.sequence([
-          Animated.delay(index * 160),
           Animated.timing(value, {
             toValue: 1,
             duration: 320,
@@ -24,16 +25,11 @@ export function TypingDots({ color = themeNew.primary }: { color?: string }) {
             duration: 320,
             useNativeDriver: true,
           }),
-          Animated.delay(320),
         ]),
-      ),
-    );
-
-    loops.forEach((loop) => loop.start());
-    return () => loops.forEach((loop) => loop.stop());
-    // The animated values are stable for the life of the component.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    )));
+    loop.start();
+    return () => { loop.stop(); dots.forEach((dot) => dot.setValue(0)); };
+  }, [dots, reduced]);
 
   return (
     <View style={styles.row} accessibilityLabel="Mira is typing">

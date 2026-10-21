@@ -10,7 +10,7 @@ import { Chip } from "../components/Chip";
 import { Input } from "../components/Input";
 import { LoadingState } from "../components/LoadingState";
 import { SegmentedControl } from "../components/SegmentedControl";
-import { EmptyState, ErrorState } from "../components/States";
+import { EmptyState } from "../components/States";
 import { colors } from "../constants/colors";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
@@ -75,7 +75,7 @@ export function SymptomsScreen({ navigation }: Props) {
       .finally(() => setLoading(false));
   };
 
-  useEffect(load, []);
+  useEffect(() => { void Promise.resolve().then(load); }, []);
 
   const toggle = (s: string) =>
     setSymptoms((cur) =>

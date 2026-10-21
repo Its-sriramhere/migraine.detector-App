@@ -1,7 +1,7 @@
 import Slider from "@react-native-community/slider";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppHeader } from "../components/AppHeader";
 import { AdviceList } from "../components/AdviceList";
@@ -11,7 +11,6 @@ import { Chip } from "../components/Chip";
 import { DemoBanner } from "../components/DemoBanner";
 import { RiskBadge } from "../components/RiskBadge";
 import { colors } from "../constants/colors";
-import { radius } from "../constants/radius";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
 import type { Prediction, ScenarioName } from "../types";

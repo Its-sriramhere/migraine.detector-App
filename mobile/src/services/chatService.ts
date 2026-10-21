@@ -53,7 +53,7 @@ export function getChatGuide() {
   return api.get<ChatGuide>("/chat/guide");
 }
 
-export function sendChat(
+export async function sendChat(
   messages: ChatMessage[],
   options?: {
     topicId?: string | null;
@@ -61,11 +61,12 @@ export function sendChat(
     wearableData?: WearableShare | null;
   },
 ) {
-  return api.post<ChatReply>("/chat", {
-    messages: messages.slice(-10),
+  const response = await api.post<ChatReply & { topic_id?: string | null }>("/chat", {
+    messages: messages.slice(-10).map(({ role, content }) => ({ role, content })),
     ...(options?.topicId ? { topicId: options.topicId } : {}),
     ...(options?.shareMetrics && options.wearableData
       ? { shareMetrics: true, wearableData: options.wearableData }
       : {}),
   });
+  return { ...response, topicId: response.topic_id ?? response.topicId ?? null };
 }

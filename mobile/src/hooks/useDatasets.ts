@@ -26,7 +26,7 @@ export function useDatasets(autoLoad = true) {
   }, []);
 
   useEffect(() => {
-    if (autoLoad) void load();
+    if (autoLoad) void Promise.resolve().then(load);
   }, [autoLoad, load]);
 
   return { data, thresholds, loading, error, reload: load };

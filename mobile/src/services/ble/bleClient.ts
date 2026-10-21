@@ -25,7 +25,7 @@ export function getBleManager(): BleManager | null {
     const BleManager = mod.BleManager as new () => BleManager;
     manager = new BleManager();
     return manager;
-  } catch (e) {
+  } catch {
     unavailableReason =
       Platform.OS === "android"
         ? "Bluetooth needs a development build. Run `npx expo run:android`."

@@ -1,0 +1,8 @@
+[project]
+name = "migraine-detector"
+ref = "lrulmcudqdlidhldncok"
+backend = "True"
+
+[db]
+schema = "public"
+```

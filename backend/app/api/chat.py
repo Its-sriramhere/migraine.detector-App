@@ -130,7 +130,7 @@ def chat(body: ChatRequest) -> ChatResponse:
             reply=chat_service.EMERGENCY_TEXT, mode="safety", topic_id=None
         )
 
-    canned = chat_service.offline_answer(question, body.topic_id)
+    canned = chat_service.answer_with_context(messages, body.topic_id)
 
     # App help stays deterministic even when an AI key is configured.
     if canned["mode"] == "guide" or not _ai_mode():
@@ -143,5 +143,9 @@ def chat(body: ChatRequest) -> ChatResponse:
         if body.share_metrics and body.wearable_data
         else None
     )
-    reply = _call_model(messages, readings)
+    try:
+        reply = _call_model(messages, readings)
+    except HTTPException:
+        # Keep the local guide usable when the optional provider is down.
+        return ChatResponse(reply=canned["reply"] + "\n\nAI is unavailable; this answer comes from the built-in guide.", mode=canned["mode"], topic_id=canned.get("topic_id"))
     return ChatResponse(reply=reply, mode="ai", topic_id=None)

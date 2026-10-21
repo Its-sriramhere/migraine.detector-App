@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 import {
@@ -82,7 +82,7 @@ export function ArcGauge({
         : palette.low;
 
   // Count the score up from zero so the gauge reads as a live measurement.
-  const progress = useRef(new Animated.Value(0)).current;
+  const [progress] = useState(() => new Animated.Value(0));
   const [shown, setShown] = useState(0);
 
   useEffect(() => {
@@ -95,7 +95,7 @@ export function ArcGauge({
     return () => progress.removeListener(id);
   }, [clamped, progress]);
 
-  const fade = useRef(new Animated.Value(0)).current;
+  const [fade] = useState(() => new Animated.Value(0));
   useEffect(() => {
     Animated.timing(fade, {
       toValue: 1,

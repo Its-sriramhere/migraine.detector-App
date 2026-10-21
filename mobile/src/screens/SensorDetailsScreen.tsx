@@ -27,15 +27,16 @@ export function SensorDetailsScreen({ navigation, route }: Props) {
   const { sensorHistory, loading } = useSensorData(user?.id ?? null, "live");
   const metric = route.params.metric;
   const [range, setRange] = useState(1);
+  const [openedAt] = useState(Date.now);
 
   const readings = useMemo(() => {
     const hours = RANGES[range].hours;
-    const cutoff = Date.now() - hours * 60 * 60 * 1000;
+    const cutoff = openedAt - hours * 60 * 60 * 1000;
     return sensorHistory.filter((r) => {
       if (!r.timestamp) return true;
       return new Date(r.timestamp).getTime() >= cutoff;
     });
-  }, [sensorHistory, range]);
+  }, [sensorHistory, range, openedAt]);
 
   if (loading && sensorHistory.length === 0)
     return <LoadingState message="Loading readings…" />;

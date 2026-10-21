@@ -27,15 +27,16 @@ const RANGES = [
 export function TrendsScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const [range, setRange] = useState(7);
+  const [openedAt] = useState(Date.now);
   const { history, loading, error, reload } = useRisk(true);
 
   const windowed = useMemo(() => {
-    const cutoff = Date.now() - range * 24 * 60 * 60 * 1000;
+    const cutoff = openedAt - range * 24 * 60 * 60 * 1000;
     return history.filter((h) => {
       if (!h.timestamp) return true;
       return new Date(h.timestamp).getTime() >= cutoff;
     });
-  }, [history, range]);
+  }, [history, range, openedAt]);
 
   const avg =
     windowed.length > 0

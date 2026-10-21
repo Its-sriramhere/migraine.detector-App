@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
 import { themeNew } from "../constants/colors";
 import { spacing } from "../constants/spacing";
@@ -37,7 +37,7 @@ export function stagesOf(night: SleepNight): SleepStage[] {
  * night, segmented into Awake, REM, Light and Deep.
  */
 export function SleepStagesChart({ nights }: { nights: SleepNight[] }) {
-  const grow = useRef(new Animated.Value(0)).current;
+  const [grow] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     grow.setValue(0);

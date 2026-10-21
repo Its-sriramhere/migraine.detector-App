@@ -1,6 +1,9 @@
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { useCallback, useState } from "react";
+import { Animated, Easing, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
+import { AmbientBackground } from "../components/AmbientBackground";
+import { useReducedMotion } from "../hooks/useReducedMotion";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BatteryCharging, Check, RefreshCw, Watch } from "lucide-react-native";
 import { AppHeader } from "../components/AppHeader";
@@ -22,6 +25,17 @@ export function WatchScreen({ navigation }: Props) {
   const [simulated, setSimulated] = useState(true);
   const watch = useWatch({ simulated });
   const [busy, setBusy] = useState(false);
+  const [turn] = useState(() => new Animated.Value(0));
+  const reduced = useReducedMotion();
+  useFocusEffect(useCallback(() => {
+    turn.setValue(reduced ? 1 : 0);
+    const animation = Animated.timing(turn, {
+      toValue: 1, duration: reduced ? 0 : 1250,
+      easing: Easing.out(Easing.cubic), useNativeDriver: true,
+    });
+    animation.start();
+    return () => animation.stop();
+  }, [turn, reduced]));
 
   const connected = watch.state === "connected";
 
@@ -56,10 +70,17 @@ export function WatchScreen({ navigation }: Props) {
         { paddingTop: insets.top + spacing.base },
       ]}
     >
+      <AmbientBackground />
       <AppHeader title="Wearable Connection" layout="left" titleStyle={styles.title} onBack={() => navigation.goBack()} />
 
       <View style={styles.hero}>
-        <WatchMock width={130} />
+        <Animated.View style={{ transform: [
+          { perspective: 900 },
+          { rotateY: turn.interpolate({ inputRange: [0, 1], outputRange: ["-360deg", "0deg"] }) },
+          { scale: turn.interpolate({ inputRange: [0, 1], outputRange: [0.88, 1] }) },
+        ] }}>
+          <WatchMock width={130} />
+        </Animated.View>
         <View style={styles.badge}>
           <IconCircle size={52} background={colors.lowBackground} color={colors.low}>
             <Check size={22} color={colors.low} strokeWidth={3} />

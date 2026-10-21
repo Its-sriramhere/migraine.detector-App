@@ -1,7 +1,7 @@
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import type { CompositeScreenProps } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -13,6 +13,7 @@ import {
   Wind,
 } from "lucide-react-native";
 import { IconCircle } from "../components/IconCircle";
+import { AmbientBackground } from "../components/AmbientBackground";
 import { LoadingState } from "../components/LoadingState";
 import { MetricCard } from "../components/MetricCard";
 import { RiskSummaryCard } from "../components/RiskSummaryCard";
@@ -53,7 +54,7 @@ export function HomeScreen({ navigation }: Props) {
     refresh,
   } = useSensorData(user?.id ?? null, "live");
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [fadeAnim] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -80,6 +81,7 @@ export function HomeScreen({ navigation }: Props) {
           { paddingTop: insets.top + spacing.base },
         ]}
       >
+      <AmbientBackground />
       <View style={styles.head}>
         <View style={styles.headText}>
           <Text style={styles.greeting}>{greetingFor()},</Text>
@@ -114,7 +116,7 @@ export function HomeScreen({ navigation }: Props) {
         />
       )}
 
-      <Text style={styles.section}>Today's Health</Text>
+      <Text style={styles.section}>{"Today's Health"}</Text>
       <View style={styles.grid}>
         <View style={styles.cell}>
           <MetricCard
@@ -123,12 +125,12 @@ export function HomeScreen({ navigation }: Props) {
             iconColor={colors.lavenderStrong}
             label="Sleep"
             value={formatSleep(
-              baseline?.sleep_hours !== undefined
+              baseline?.sleep_hours != null
                 ? baseline.sleep_hours * 60
                 : undefined,
             )}
             sublabel={
-              baseline?.sleep_hours ? "Within sleep goal" : "Set your baseline"
+              baseline?.sleep_hours ? (baseline.sleep_hours >= 7 && baseline.sleep_hours <= 9 ? "Within sleep goal" : "Outside sleep goal") : "Set your baseline"
             }
             sublabelColor={
               baseline?.sleep_hours ? colors.lowDark : colors.textTertiary
@@ -142,11 +144,11 @@ export function HomeScreen({ navigation }: Props) {
             iconColor={colors.high}
             label="HRV"
             value={
-              latestReading?.hrv !== undefined
+              latestReading?.hrv != null
                 ? `${Math.round(latestReading.hrv)} ms`
                 : "—"
             }
-            sublabel="Your normal range"
+            sublabel={latestReading?.hrv != null ? "Latest measurement" : "Waiting for readings"}
             sublabelColor={colors.textSecondary}
           />
         </View>
@@ -172,11 +174,11 @@ export function HomeScreen({ navigation }: Props) {
             iconColor={colors.accent}
             label="SpO₂"
             value={
-              latestReading?.spo2 !== undefined
+              latestReading?.spo2 != null
                 ? `${Math.round(latestReading.spo2)}%`
                 : "—"
             }
-            sublabel="Normal"
+            sublabel={latestReading?.spo2 != null ? "Latest measurement" : "Waiting for readings"}
             sublabelColor={colors.textSecondary}
           />
         </View>
@@ -191,7 +193,7 @@ export function HomeScreen({ navigation }: Props) {
           <Text style={styles.trendBody}>
             {prediction
               ? `Health signals have been ${level === "low" ? "stable" : "shifting"}.`
-              : "Health signals have been stable."}
+              : "Connect your wearable to begin tracking trends."}
           </Text>
           <Pressable
             accessibilityRole="button"

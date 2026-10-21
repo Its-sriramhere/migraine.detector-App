@@ -22,15 +22,10 @@ class Settings(BaseSettings):
     DEMO_INTERVAL_SECONDS: float = 2.5
     DEFAULT_PREDICTION_WINDOW_MINUTES: int = 60
 
-    # --- Notifications (SMS) ---
+    # --- Notifications (SMS disabled - using mock mode) ---
     SMS_ENABLED: bool = False
-    SMS_PROVIDER: str = "mock"  # "mock" | "twilio"
-    TWILIO_ACCOUNT_SID: str = ""
-    TWILIO_AUTH_TOKEN: str = ""
-    TWILIO_FROM_NUMBER: str = ""
-    ALERT_SMS_TO: str = ""
-    ALERT_SMS_LEVEL: str = "high"  # "high" | "moderate" | "all"
-    SMS_MAX_SENDS: int = 5  # hard cap on real SMS sends (free-tier safety)
+    SMS_PROVIDER: str = "mock"
+    SMS_MAX_SENDS: int = 5  # cap for any future real SMS enablement
 
     # --- Dataset / exports ---
     EXPORT_MAX_ROWS: int = 10000
@@ -42,6 +37,12 @@ class Settings(BaseSettings):
     # still answers from the built-in app guide and wellness FAQ.
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4.1-mini"
+    # Reserved accounts are provisioned by CLI, never public registration.
+    DEVELOPER_EMAILS: str = "developer@migraine.example.com"
+
+    @property
+    def developer_emails(self) -> set[str]:
+        return {email.strip().lower() for email in self.DEVELOPER_EMAILS.split(",") if email.strip()}
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

@@ -40,4 +40,6 @@ export type RootStackParamList = {
   Prediction: undefined;
   Sleep: undefined;
   PrivacyPolicy: undefined;
+  Developer: undefined;
+  Backend: undefined;
 };

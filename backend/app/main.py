@@ -4,7 +4,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
 
-from .api import (alerts, assessment, auth, chat, dataset, datasets, demo,
+from .api import (alerts, assessment, auth, chat, dataset, datasets, demo, developer,
                   devices, migraine, predictions, reports, sensor, users)
 from .core.config import settings
 from .db.seed import init_db, seed_questions
@@ -57,6 +57,7 @@ for router in (
     dataset.router,
     datasets.router,
     chat.router,
+    developer.router,
 ):
     app.include_router(router)
 

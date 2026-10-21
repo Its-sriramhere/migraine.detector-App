@@ -1,5 +1,4 @@
-import { Sparkle } from "lucide-react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import { BrandGlyph } from "./BrandGlyph";
 import { StyleSheet, View } from "react-native";
 import { themeNew } from "../constants/colors";
 
@@ -16,7 +15,6 @@ export function MiraMark({
   /** Show the green "available" dot, used on the floating button. */
   withStatus?: boolean;
 }) {
-  const sparkle = Math.round(size * 0.46);
   const dot = Math.round(size * 0.19);
 
   return (
@@ -26,17 +24,7 @@ export function MiraMark({
         { width: size, height: size, borderRadius: size / 2 },
       ]}
     >
-      <LinearGradient
-        colors={["#2D73F2", "#6D58E8"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[
-          styles.gradient,
-          { width: size, height: size, borderRadius: size / 2 },
-        ]}
-      >
-        <Sparkle size={sparkle} color="#FFFFFF" strokeWidth={1.6} />
-      </LinearGradient>
+      <BrandGlyph size={size} assistant />
 
       {withStatus ? (
         <View

@@ -53,6 +53,6 @@ const styles = StyleSheet.create({
   subtitle: {
     ...typography.body,
     color: themeNew.textSecondary,
-    marginTop: -spacing.sm,
+    marginTop: spacing.sm,
   },
 });

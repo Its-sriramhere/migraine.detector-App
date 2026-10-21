@@ -1,4 +1,4 @@
-import { StyleSheet, View } from "react-native";
+import { View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 import { colors } from "../constants/colors";
 
@@ -72,5 +72,3 @@ export function BrainArt({
     </View>
   );
 }
-
-const styles = StyleSheet.create({});

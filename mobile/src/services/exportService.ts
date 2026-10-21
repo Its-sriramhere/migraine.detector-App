@@ -1,6 +1,7 @@
 import { File, Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
-import { API_BASE, getToken } from "./api";
+import { getToken } from "./api";
+import { config } from "../constants/config";
 
 /**
  * Downloads an authenticated CSV endpoint and hands it to the native share
@@ -12,7 +13,7 @@ export async function exportCsv(
   filename: string,
 ): Promise<{ shared: boolean; uri: string }> {
   const token = await getToken();
-  const response = await fetch(`${API_BASE}${path}`, {
+  const response = await fetch(`${config.apiBaseUrl}${path}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });
   if (!response.ok) {

@@ -12,13 +12,14 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Send, Sparkle, X } from "lucide-react-native";
+import { Send, X } from "lucide-react-native";
 import { themeNew } from "../constants/colors";
 import { radius } from "../constants/radius";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
 import { TypingDots } from "./TypingDots";
 import { MiraMark } from "./MiraMark";
+import { MessageReveal } from "./MessageReveal";
 import type {
   ChatFeature,
   ChatGuide,
@@ -57,6 +58,7 @@ export function MiraChatOverlay({
   const [tourStep, setTourStep] = useState(-1);
   const scrollRef = useRef<ScrollView>(null);
   const inputRef = useRef<TextInput>(null);
+  const sending = useRef(false);
 
   useEffect(() => {
     if (!visible || guide) return;
@@ -73,7 +75,8 @@ export function MiraChatOverlay({
 
   const send = async (question: string = draft, topicId?: string) => {
     const text = question.trim().slice(0, 1000);
-    if (!text || busy) return;
+    if (!text || sending.current) return;
+    sending.current = true;
 
     const next: ChatMessage[] = [
       ...messages,
@@ -86,16 +89,11 @@ export function MiraChatOverlay({
 
     // The guide answers cached questions instantly. Hold the reply back for a
     // beat so the typing indicator is seen and the answer feels considered.
-    const startedAt = Date.now();
-
     try {
-      const reply: ChatReply = await sendChat(next, { topicId });
-      const elapsed = Date.now() - startedAt;
-      if (elapsed < MIN_THINKING_MS) {
-        await new Promise((resolve) =>
-          setTimeout(resolve, MIN_THINKING_MS - elapsed),
-        );
-      }
+      const [reply]: [ChatReply, unknown] = await Promise.all([
+        sendChat(next, { topicId }),
+        new Promise((resolve) => setTimeout(resolve, MIN_THINKING_MS)),
+      ]);
       setMessages((current) => [
         ...current,
         {
@@ -109,6 +107,7 @@ export function MiraChatOverlay({
         e instanceof Error ? e.message : "Unable to reach Mira. Try again.",
       );
     } finally {
+      sending.current = false;
       setBusy(false);
     }
   };
@@ -119,7 +118,7 @@ export function MiraChatOverlay({
       : undefined;
 
   const goTo = (feature: ChatFeature) => {
-    if (onNavigate) onNavigate(feature.route);
+    if (onNavigate) { onClose(); onNavigate(feature.route); }
   };
 
   return (
@@ -133,11 +132,11 @@ export function MiraChatOverlay({
       <Pressable style={styles.backdrop} onPress={onClose} />
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.sheet}
         pointerEvents="box-none"
       >
-        <View style={styles.panel}>
+        <View style={[styles.panel, { paddingBottom: insets.bottom }]}>
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.avatar}>
@@ -232,6 +231,7 @@ export function MiraChatOverlay({
             style={styles.body}
             contentContainerStyle={styles.bodyContent}
             keyboardShouldPersistTaps="handled"
+            onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
           >
             <Text style={styles.date}>TODAY</Text>
             {messages.map((m, i) => {
@@ -252,6 +252,7 @@ export function MiraChatOverlay({
                     </View>
                   ) : null}
                   <View style={styles.bubbleWrap}>
+                    <MessageReveal>
                     <View
                       style={[
                         styles.bubble,
@@ -269,6 +270,7 @@ export function MiraChatOverlay({
                         {m.content}
                       </Text>
                     </View>
+                    </MessageReveal>
                     {feature && onNavigate ? (
                       <Pressable
                         onPress={() => goTo(feature)}

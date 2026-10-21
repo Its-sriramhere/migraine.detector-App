@@ -1,4 +1,4 @@
-import { StyleSheet, View } from "react-native";
+import { View } from "react-native";
 import Svg, { Circle, Path, Rect, Text as SvgText } from "react-native-svg";
 import { colors } from "../constants/colors";
 
@@ -100,5 +100,3 @@ export function WatchMock({
     </View>
   );
 }
-
-const styles = StyleSheet.create({});

@@ -26,6 +26,7 @@ import { typography } from "../constants/typography";
 import { useAuth } from "../hooks/useAuth";
 import type { BaselineEstimates, RiskProfile } from "../types";
 import * as userService from "../services/userService";
+import { api } from "../services/api";
 import type {
   MainTabParamList,
   RootStackParamList,
@@ -41,10 +42,12 @@ export function ProfileScreen({ navigation }: Props) {
   const { user, signOut } = useAuth();
   const [profile, setProfile] = useState<RiskProfile | null>(null);
   const [baseline, setBaseline] = useState<BaselineEstimates | null>(null);
+  const [developer, setDeveloper] = useState(false);
 
   useEffect(() => {
     userService.getRiskProfile().then(setProfile).catch(() => undefined);
     userService.getBaseline().then(setBaseline).catch(() => undefined);
+    api.get<{ enabled: boolean }>("/developer/status").then((s) => setDeveloper(s.enabled)).catch(() => setDeveloper(false));
   }, []);
 
   const initial = (user?.name?.[0] ?? "?").toUpperCase();
@@ -58,15 +61,18 @@ export function ProfileScreen({ navigation }: Props) {
       ]}
     >
       <View style={styles.brandRow}>
+        <TabBackButton onPress={() => navigation.navigate("Home")} />
         <AppLogo size={40} />
         <View style={styles.brandText}>
           <Text style={styles.brandName}>Migraine Detector</Text>
           <Text style={styles.brandSub}>Wearable-powered health companion</Text>
         </View>
-        <TabBackButton onPress={() => navigation.navigate("Home")} />
       </View>
 
       <PageTitle title="Profile & Settings" />
+      {developer ? (
+        <MenuRow icon={<HelpCircle size={20} color={colors.primary} />} title="Developer testing" subtitle="Send a manual test alert" onPress={() => navigation.navigate("Developer")} />
+      ) : null}
 
       <Pressable
         accessibilityRole="button"

@@ -1,36 +1,86 @@
-"""One-time migration of the local SQLite database into Supabase Postgres.
+"""Migrate the Migraine Detector backend from local SQLite to Supabase Postgres.
 
-Usage:
-    python scripts/migrate_to_supabase.py --target <postgres-url>
+- Creates the schema from the backend's own SQLAlchemy models (exact match).
+- Seeds the assessment question bank.
+- Copies every row from backend/migraine.db, preserving primary keys so all
+  foreign keys stay valid.
+- Re-syncs Postgres sequences so new inserts do not collide.
 
-Copies every table from the local SQLite app (current ``DATABASE_URL`` when it is
-sqlite, or ``--source``) into the target Postgres URL (env ``SUPABASE_DATABASE_URL``
-or ``--target``).
-
-- Creates the target schema first (same models as the app) if it is missing.
-- Runs in FK-safe order (users -> questions -> profiles -> devices -> readings
-  -> episodes -> predictions -> features -> alerts -> advice -> notifications).
-- Idempotent: any table that already has rows in the target is skipped.
-- Fixes Postgres ``serial`` sequences after explicit-id inserts.
-
-Stop the backend first so nothing writes mid-copy.
+The target connection comes from the DATABASE_URL environment variable, or
+from backend/.env when it is already configured. Credentials are never
+hardcoded here.
 """
-import argparse
 import os
 import sys
 from pathlib import Path
 
-from sqlalchemy import create_engine, inspect, text
-from sqlalchemy.orm import Session
+ROOT = Path(r"C:\Users\LOQ\Desktop\Migrainedetector-App")
+sys.path.insert(0, str(ROOT))
 
-BACKEND_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(BACKEND_ROOT))
+# Force the target connection before any settings import. Environment
+# variables take priority over the .env file in pydantic-settings.
+if not os.environ.get("DATABASE_URL"):
+    env_file = ROOT / "backend" / ".env"
+    if env_file.exists():
+        for line in env_file.read_text(encoding="utf-8", errors="ignore").splitlines():
+            if line.startswith("DATABASE_URL="):
+                os.environ["DATABASE_URL"] = line.split("=", 1)[1].strip()
+                break
 
+import sqlite3
 
-TABLES = [
+from sqlalchemy import create_engine, text
+
+from backend.app.core.config import settings
+from backend.app.db.session import Base
+from backend.app.db.seed import seed_questions
+from backend.app.db.session import SessionLocal
+from backend.app import models  # noqa: F401  (registers all tables)
+
+SQLITE_PATH = ROOT / "backend" / "migraine.db"
+
+assert settings.DATABASE_URL.startswith("postgresql://"), settings.DATABASE_URL
+engine = create_engine(settings.DATABASE_URL, pool_pre_ping=True)
+
+# ---------------------------------------------------------------- schema
+print("== creating schema on Supabase ==")
+Base.metadata.drop_all(bind=engine)
+Base.metadata.create_all(bind=engine)
+with engine.connect() as conn:
+    tables = [
+        r[0] for r in conn.execute(text(
+            "SELECT table_name FROM information_schema.tables "
+            "WHERE table_schema='public' ORDER BY table_name"
+        ))
+    ]
+print(f"   tables: {tables}")
+
+# ---------------------------------------------------------------- seed
+print("\n== seeding assessment questions ==")
+db = SessionLocal()
+try:
+    seed_questions(db)
+    with engine.connect() as conn:
+        n = conn.execute(text("SELECT COUNT(*) FROM assessment_questions")).scalar()
+    print(f"   assessment_questions seeded: {n}")
+finally:
+    db.close()
+
+# ---------------------------------------------------------------- copy
+print("\n== copying rows from SQLite ==")
+src = sqlite3.connect(SQLITE_PATH)
+src.row_factory = sqlite3.Row
+src_tables = [
+    r[0] for r in src.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' "
+        "AND name != 'test_batch' ORDER BY name"
+    )
+]
+
+COPY_ORDER = [
     "users",
-    "assessment_questions",
     "user_profiles",
+    "assessment_questions",
     "assessment_responses",
     "user_risk_profiles",
     "devices",
@@ -44,106 +94,105 @@ TABLES = [
     "datasets",
 ]
 
-
-def _current_sqlite_url() -> str:
-    from app.core.config import settings
-
-    return settings.DATABASE_URL
-
-
-def _table_has_rows(session: Session, table: str) -> int:
-    return session.execute(text(f'SELECT COUNT(*) FROM "{table}"')).scalar() or 0
-
-
-def _copy_table(src: Session, dst: Session, table: str) -> str:
-    src_rows = [
-        dict(r)
-        for r in src.execute(text(f'SELECT * FROM "{table}"')).mappings()
-    ]
-    if not src_rows:
-        return "empty"
-
-    placeholders = ", ".join(f":c{i}" for i in range(len(src_rows[0])))
-    col_names = ", ".join(f'"{c}"' for c in src_rows[0])
-    for row in src_rows:
-        dst.execute(
-            text(f'INSERT INTO "{table}" ({col_names}) VALUES ({placeholders})'),
-            {f"c{i}": v for i, v in enumerate(row.values())},
-        )
-    dst.commit()
-    return f"copied ({len(src_rows)} rows)"
-
-
-def _bump_sequence(dst: Session, table: str, inspector) -> None:
-    pk = None
-    for col in inspector.get_columns(table):
-        if col.get("primary_key"):
-            pk = col["name"]
-            break
-    if not pk:
-        return
-    max_id = dst.execute(
-        text(f'SELECT COALESCE(MAX("{pk}"), 0) FROM "{table}"')
-    ).scalar()
-    try:
-        dst.execute(
-            text(
-                f"SELECT setval(pg_get_serial_sequence(:t, :c), :v, true)"
-            ),
-            {"t": table, "c": pk, "v": max_id},
-        )
-        dst.commit()
-    except Exception:  # noqa: BLE001 - column is not a serial
-        dst.rollback()
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--source", default=None, help="SQLite URL to copy FROM.")
-    parser.add_argument(
-        "--target",
-        default=os.environ.get("SUPABASE_DATABASE_URL"),
-        help="Postgres URL to copy INTO (default: env SUPABASE_DATABASE_URL).",
-    )
-    args = parser.parse_args()
-
-    src_url = args.source or _current_sqlite_url()
-    if not src_url.startswith("sqlite"):
-        raise SystemExit("--source must be a sqlite URL; refusing to copy from non-SQLite.")
-    if not args.target or not args.target.startswith(("postgresql", "postgres")):
-        raise SystemExit("--target must be a postgres URL (or set SUPABASE_DATABASE_URL).")
-
-    db_file = src_url.replace("sqlite:///", "").replace("sqlite://", "")
-    if not os.path.exists(db_file):
-        raise SystemExit(f"source DB file not found: {db_file}")
-
-    src = create_engine(src_url, connect_args={"check_same_thread": False})
-    dst = create_engine(args.target, connect_args={"sslmode": "require"})
-
-    from app.models import Base
-
-    dst_insp = inspect(dst)
-    Base.metadata.create_all(dst)
-    print(f"source: {src_url}")
-    host = args.target.split("//")[1].split("@")[-1].split("/")[0]
-    print(f"target: {host}")
-    print()
-
-    with Session(src) as sdb, Session(dst) as ddb:
-        for table in TABLES:
-            try:
-                count = _table_has_rows(ddb, table)
-            except Exception:  # noqa: BLE001
+with engine.begin() as conn:
+    # SQLite does not enforce VARCHAR lengths, but Postgres does. Widen any
+    # character column whose real data is wider than the declared length so
+    # the historical rows can be copied without truncation.
+    for table in COPY_ORDER:
+        if table not in src_tables:
+            continue
+        declared = {
+            r[0]: r[1] for r in conn.execute(text(
+                "SELECT column_name, character_maximum_length "
+                "FROM information_schema.columns "
+                "WHERE table_schema='public' AND table_name=:t "
+                "AND data_type='character varying'"
+            ), {"t": table})
+        }
+        if not declared:
+            continue
+        for column, max_len in declared.items():
+            if not max_len:
                 continue
-            if count:
-                print(f"  skip   {table:24s} (already {count} rows)")
-                continue
-            status = _copy_table(sdb, ddb, table)
-            _bump_sequence(ddb, table, dst_insp)
-            print(f"  {status:24s} <- {table}")
+            longest = src.execute(
+                f'SELECT COALESCE(MAX(LENGTH("{column}")), 0) FROM "{table}"'
+            ).fetchone()[0]
+            if longest and longest > max_len:
+                conn.execute(text(
+                    f'ALTER TABLE "{table}" ALTER COLUMN "{column}" '
+                    f'TYPE VARCHAR({longest})'
+                ))
+                print(f"   widened {table}.{column}: VARCHAR({max_len}) -> VARCHAR({longest})")
 
-    print("\nMigration finished.")
+    for table in COPY_ORDER:
+        if table not in src_tables:
+            continue
+        rows = src.execute(f'SELECT * FROM "{table}"').fetchall()
+        if not rows:
+            print(f"   {table}: 0 rows (skipped)")
+            continue
+        cols = list(rows[0].keys())
 
+        # SQLite stores booleans as 0/1 integers; Postgres needs real booleans.
+        bool_cols = {
+            r[0] for r in conn.execute(text(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_schema='public' AND table_name=:t "
+                "AND data_type='boolean'"
+            ), {"t": table})
+        }
 
-if __name__ == "__main__":
-    main()
+        collist = ", ".join(f'"{c}"' for c in cols)
+        placeholders = ", ".join(f":{c}" for c in cols)
+        stmt = text(
+            f'INSERT INTO "{table}" ({collist}) VALUES ({placeholders}) '
+            f"ON CONFLICT DO NOTHING"
+        )
+        payload = []
+        for row in rows:
+            record = {c: row[c] for c in cols}
+            for c in bool_cols:
+                if record.get(c) is not None:
+                    record[c] = bool(record[c])
+            payload.append(record)
+        conn.execute(stmt, payload)
+        print(f"   {table}: {len(rows)} rows copied")
+
+# ---------------------------------------------------------------- sequences
+print("\n== resyncing sequences ==")
+with engine.begin() as conn:
+    for table in COPY_ORDER:
+        if table not in src_tables:
+            continue
+        exists = conn.execute(text(
+            "SELECT COUNT(*) FROM information_schema.tables "
+            "WHERE table_schema='public' AND table_name=:t"
+        ), {"t": table}).scalar()
+        if not exists:
+            continue
+        max_id = conn.execute(text(f'SELECT COALESCE(MAX(id), 0) FROM "{table}"')).scalar()
+        if max_id:
+            conn.execute(text(
+                f"SELECT setval(pg_get_serial_sequence(:t, 'id'), :v, true)"
+            ), {"t": table, "v": max_id})
+print("   sequences synced")
+
+# ---------------------------------------------------------------- verify
+print("\n== verification ==")
+with engine.connect() as conn:
+    for table in COPY_ORDER:
+        if table not in src_tables:
+            continue
+        src_n = src.execute(f'SELECT COUNT(*) FROM "{table}"').fetchone()[0]
+        dst_n = conn.execute(text(f'SELECT COUNT(*) FROM "{table}"')).scalar()
+        flag = "OK " if src_n == dst_n else "DIFF"
+        print(f"   [{flag}] {table}: sqlite={src_n} supabase={dst_n}")
+
+    q = conn.execute(text(
+        "SELECT question_text FROM assessment_questions ORDER BY id"
+    )).fetchall()
+    print(f"\n   total assessment questions in Supabase: {len(q)}")
+
+src.close()
+engine.dispose()
+print("\nMigration finished.")
