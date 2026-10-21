@@ -74,25 +74,42 @@ sign in again after switching servers.
 | Area | Notes |
 |---|---|
 | **Onboarding** | Three slides, then the assessment. |
-| **Health assessment** | 14 questions in 5 steps. Builds a personal risk profile. |
-| **Home** | Risk gauge, today's health, prediction card, trend chart. |
-| **Mira** | The floating blue button. Ask about any screen, or a wellness topic. |
+| **Health assessment** | 14 questions in 5 steps. Every question in a step must be answered before the button unlocks. |
+| **Your current status** | On Home, straight after the assessment, a card explains where you stand: what to focus on, what looks good, and one thing to try. Tap **Ask Mira about this** to open the chat with that question already asked. |
+| **Mira** | The floating blue button. It breathes gently. Ask about any screen, or a wellness topic. Replies come with up to three tappable suggestions. |
+| **Mira emergency panel** | Send "worst headache of my life" — the reply appears in a red panel, not a normal bubble. |
+| **Mira quiet mode** | The moon button in the chat header. Short replies, no animation. |
+| **Connect Wearable** | The radar screen. Shows the watches already paired to this phone and any device advertising nearby. |
 | **Monitoring** | Wearable connection and live readings. |
 | **Symptoms** | Log a migraine episode with severity, symptoms and triggers. |
 | **History** | Previous predictions, episodes and alerts. |
 | **Profile & Settings** | Account, data export, developer tools. |
 | **Alerts** | Notifications raised by the prediction engine. |
 
+## Reading the status card
+
+The card describes what the assessment answers say about you. It deliberately
+shows **no risk score or band**, because the risk bands are calibrated
+against sensor readings rather than questionnaire answers, so a band derived
+from the assessment alone would mislead. A risk estimate appears on Home once
+your wearable starts sending readings.
+
+Every focus area and tip is general self-care education, not medical advice,
+and the content has not yet been through clinical review.
+
 ## Known limitations
 
-- **No real wearable included.** Without a paired device, use the simulated
+- **No wearable included.** Without a paired device, use the simulated
   wearable in **Monitoring** to exercise the UI. It produces realistic
   readings without Bluetooth.
+- **The Connect Wearable list is Android only** for devices already paired to
+  the phone; the nearby scan works on both platforms.
 - **Risk scores are illustrative.** This is a research prototype using a
   heuristic model, not a clinically validated diagnostic device. The app says
   so on every screen that shows a score.
 - **Mira is in offline guide mode.** It answers from the built-in app guide
-  and wellness FAQ. There is no language model connected in this build.
+  and a wellness knowledge base. There is no language model connected in this
+  build.
 - **No SMS.** Alerts are recorded in the app and on the server, but nothing
   is sent to a phone number.
 - **The backend sleeps when idle** on the free hosting plan, so the first

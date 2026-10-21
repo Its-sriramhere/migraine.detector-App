@@ -9,6 +9,7 @@
     "userInterfaceStyle": "light",
     "backgroundColor": "#FFFFFF",
     "ios": {
+      "bundleIdentifier": "com.migrainedetector.beta",
       "supportsTablet": true,
       "infoPlist": {
         "NSBluetoothAlwaysUsageDescription": "The wearable streams your sleep, HRV, blood pressure and SpO2 readings to the app and receives risk alerts.",

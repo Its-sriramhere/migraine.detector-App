@@ -89,8 +89,25 @@ export function getChatStatus() {
   return api.get<ChatStatus>("/chat/status");
 }
 
-export function getChatGuide() {
-  return api.get<ChatGuide>("/chat/guide");
+export async function getChatGuide(): Promise<ChatGuide> {
+  const guide = await api.get<ChatGuide & { content_version?: string }>("/chat/guide");
+  return { ...guide, content_version: guide.content_version };
+}
+
+/** The wire format, which uses snake_case like the rest of the API. */
+interface ChatReplyWire {
+  reply: string;
+  mode: "demo" | "guide" | "safety" | "ai";
+  topic_id?: string | null;
+  conversation_id?: string;
+  intent?: string;
+  safety_level?: string;
+  content_version?: string;
+  quick_replies?: QuickReply[];
+  ui_actions?: UiAction[];
+  requires_confirmation?: boolean;
+  medical_data_used?: boolean;
+  cards?: ChatCard[];
 }
 
 export async function sendChat(
@@ -100,13 +117,26 @@ export async function sendChat(
     shareMetrics?: boolean;
     wearableData?: WearableShare | null;
   },
-) {
-  const response = await api.post<ChatReply & { topic_id?: string | null }>("/chat", {
+): Promise<ChatReply> {
+  const response = await api.post<ChatReplyWire>("/chat", {
     messages: messages.slice(-10).map(({ role, content }) => ({ role, content })),
     ...(options?.topicId ? { topicId: options.topicId } : {}),
     ...(options?.shareMetrics && options.wearableData
       ? { shareMetrics: true, wearableData: options.wearableData }
       : {}),
   });
-  return { ...response, topicId: response.topic_id ?? response.topicId ?? null };
+  return {
+    reply: response.reply,
+    mode: response.mode,
+    topicId: response.topic_id ?? null,
+    conversationId: response.conversation_id,
+    intent: response.intent,
+    safetyLevel: response.safety_level,
+    contentVersion: response.content_version,
+    quickReplies: response.quick_replies ?? [],
+    uiActions: response.ui_actions ?? [],
+    requiresConfirmation: response.requires_confirmation ?? false,
+    medicalDataUsed: response.medical_data_used ?? false,
+    cards: response.cards ?? [],
+  };
 }
