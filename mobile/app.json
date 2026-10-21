@@ -13,7 +13,11 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSBluetoothAlwaysUsageDescription": "The wearable streams your sleep, HRV, blood pressure and SpO2 readings to the app and receives risk alerts.",
-        "NSBluetoothPeripheralUsageDescription": "The wearable streams your sleep, HRV, blood pressure and SpO2 readings to the app and receives risk alerts."
+        "NSBluetoothPeripheralUsageDescription": "The wearable streams your sleep, HRV, blood pressure and SpO2 readings to the app and receives risk alerts.",
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIBackgroundModes": [
+          "bluetooth-central"
+        ]
       }
     },
     "android": {
@@ -46,6 +50,15 @@
         {
           "isBackgroundEnabled": true,
           "neverForLocation": true
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/brand-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#F8FBFF"
         }
       ]
     ]

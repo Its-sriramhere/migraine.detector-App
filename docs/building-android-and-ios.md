@@ -61,32 +61,67 @@ The `preview` profile produces an APK for internal distribution and the
 iOS native project is generated from macOS-only templates. The repository
 therefore does not contain an `ios/` folder.
 
-### Cloud build with EAS (works from any machine)
+### Producing an .ipa from Windows with EAS
 
-This is the simplest path and needs no Mac locally.
+The iOS binary is compiled on EAS's own macOS machines, so the whole
+process runs from Windows. A free Expo account is enough to build; an Apple
+Developer account is needed for the result to install on a real iPhone.
+
+**One command:**
+
+```powershell
+cd mobile
+powershell -ExecutionPolicy Bypass -File scripts\build-ios-ipa.ps1
+```
+
+The script checks the Expo session, validates the project, starts the
+build and prints the link to the finished `.ipa`. If you are not signed in
+yet it tells you what to do:
 
 ```bash
-cd mobile
+# 1. Create a free account at https://expo.dev/signup
+# 2. Sign in (opens a browser)
 npx eas-cli login
+
+# 3. Build
 npx eas-cli build --platform ios --profile preview
 ```
 
-EAS builds on a macOS machine in the cloud, signs the app with your Apple
-Developer credentials, and gives you an `.ipa` to install on a device or
-upload to TestFlight.
+The build takes roughly 10-20 minutes. EAS prints a link when it is done,
+and the `.ipa` can be downloaded from there.
 
-For a device build, EAS needs an Apple team. Set it up once with:
+**Build profiles** (in `mobile/eas.json`):
+
+| Profile | Result |
+|---|---|
+| `preview` | Internal distribution, an `.ipa` for direct install. The default choice. |
+| `development` | A development client with a simulator build. |
+| `production` | An App Store build (`.ipa` for TestFlight, `.aab` for the store). |
+
+**Simulator build**, which needs no Apple account but only runs on a Mac:
+
+```bash
+npx eas-cli build --platform ios --profile preview --target simulator
+```
+
+**Listing and downloading finished builds:**
+
+```bash
+npx eas-cli build:list --platform ios
+npx eas-cli build:view <build-id>
+```
+
+### Signing
+
+The first iOS build asks which Apple team to sign with. Set it up once:
 
 ```bash
 npx eas-cli credentials
 ```
 
-The iOS bundle identifier is `com.migrainedetector.beta`, declared in
-`mobile/app.json`. The Bluetooth usage strings are there too:
-
-- `NSBluetoothAlwaysUsageDescription` - scanning for and connecting to a
-  wearable
-- `NSBluetoothPeripheralUsageDescription` - streaming readings from it
+Without an Apple Developer account EAS can still build, but the result is
+a simulator build that will not install on a physical iPhone. A paid
+account is required for a build that real devices accept.
 
 ### Local build on a Mac
 
@@ -113,3 +148,5 @@ for distribution.
   and iOS shows the system prompt the first time the app scans.
 - **Background scanning is off by default.** The app only scans while the
   Connect Wearable screen is open, which matches the way the screen reads.
+- **The launch screen** uses the brand icon on the brand background, set by
+  the `expo-splash-screen` config plugin.
