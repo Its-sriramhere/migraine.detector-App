@@ -72,6 +72,10 @@ try {
   Write-Host "The build is queued or finished. EAS prints a link to the .ipa." -ForegroundColor Green
   Write-Host "You can also list the finished builds with:" -ForegroundColor Cyan
   Write-Host "    npx eas-cli build:list --platform ios" -ForegroundColor White
+  Write-Host ""
+  Write-Host "To keep the file with the other builds, download it and publish it" -ForegroundColor Cyan
+  Write-Host "into a version-stamped folder so earlier builds are never replaced:" -ForegroundColor Cyan
+  Write-Host "    python scripts\publish_artifact.py --ipa <downloaded-ipa>" -ForegroundColor White
 }
 finally {
   Pop-Location
