@@ -3,14 +3,17 @@ services:
     name: migraine-detector-api
     runtime: python
     plan: free
-    rootDir: backend
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    # No rootDir: the build and start commands below are written to work
+    # from the repository root, so the service deploys correctly whether or
+    # not a Root Directory is set in the dashboard.
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && exec uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/chat/status
     autoDeploy: true
     envVars:
       # Supabase Postgres (IPv4 pooler; the direct db host is IPv6-only).
-      # The password must be URL-encoded, so "@" becomes "%40".
+      # The pooler username is postgres.<project-ref> and the password must
+      # be URL-encoded, so "@" becomes "%40".
       - key: DATABASE_URL
         sync: false
       - key: SUPABASE_URL
@@ -29,6 +32,9 @@ services:
         value: "false"
       - key: SMS_PROVIDER
         value: mock
+      - key: SMS_MAX_SENDS
+        value: "5"
+      # Leave empty. A non-empty value switches Mira into AI mode.
       - key: OPENAI_API_KEY
         sync: false
       - key: OPENAI_MODEL
