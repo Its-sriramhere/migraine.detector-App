@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import {
   Animated,
   Easing,
@@ -35,8 +35,8 @@ export function MiraFab({
   right?: number;
 }) {
   const reduced = useReducedMotion();
-  const float = useRef(new Animated.Value(0)).current;
-  const halo = useRef(new Animated.Value(0)).current;
+  const [float] = useState(() => new Animated.Value(0));
+  const [halo] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     if (reduced) {

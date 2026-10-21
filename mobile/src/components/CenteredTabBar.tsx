@@ -37,7 +37,7 @@ export function CenteredTabBar({
         testID="device-connection-fab"
         accessibilityRole="button"
         accessibilityLabel="Connect a wearable"
-        onPress={() => navigation.navigate("Watch" as never)}
+        onPress={() => navigation.navigate("ConnectWearable" as never)}
         style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
       >
         <Text style={styles.fabPlus}>+</Text>

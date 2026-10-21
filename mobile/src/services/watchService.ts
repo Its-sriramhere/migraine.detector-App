@@ -1,4 +1,5 @@
 import { getBleManager, bleUnavailableReason } from "./ble/bleClient";
+import { getBondedDevicesModule } from "./ble/bondedDevices";
 import { PermissionsAndroid, Platform } from "react-native";
 import { api } from "./api";
 import {
@@ -26,7 +27,16 @@ export interface DiscoveredWatch {
   id: string;
   name: string;
   rssi: number;
+  /** Service UUIDs the device advertised. */
+  serviceUUIDs?: string[];
+  /** True when the device advertises the Bluetooth SIG Heart Rate service. */
+  looksLikeWearable?: boolean;
+  /** True when the phone has this device bonded. */
+  paired?: boolean;
 }
+
+/** The standard Bluetooth SIG Heart Rate service, 0x180D. */
+const HEART_RATE_SERVICE_UUID = "0000180d-0000-1000-8000-00805f9b34fb";
 
 /**
  * Owns the BLE link to the wearable: scanning, connecting, subscribing to
@@ -49,31 +59,70 @@ class WatchService {
     return this.device !== null;
   }
 
-  /** Scan for nearby watches advertising our service (or standard HRS). */
-  async scan(timeoutMs = 8000): Promise<DiscoveredWatch[]> {
-    if (Platform.OS === "android") {
-      const permissions = Number(Platform.Version) >= 31
-        ? [PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN, PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT]
-        : [PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION];
-      const granted = await PermissionsAndroid.requestMultiple(permissions);
-      if (permissions.some((permission) => granted[permission] !== PermissionsAndroid.RESULTS.GRANTED)) {
-        throw new Error("Allow Nearby devices permission in Android Settings to scan for wearables.");
-      }
+  /**
+   * Ask Android for the devices already bonded to this phone.
+   *
+   * These are the same entries the system Bluetooth settings show, and they
+   * are not the same set as what a scan finds: a bonded watch is often out
+   * of range, so it would never appear in a scan.
+   */
+  async pairedDevices(): Promise<DiscoveredWatch[]> {
+    const native = getBondedDevicesModule();
+    if (!native) return [];
+    try {
+      const devices = await native.getBondedDevices();
+      return devices.map((d) => ({
+        id: d.id,
+        name: d.name || "Paired device",
+        rssi: d.rssi ?? 0,
+        paired: true,
+      }));
+    } catch {
+      return [];
     }
+  }
+
+  /** Request the runtime permissions BLE scanning needs. */
+  async requestPermissions(): Promise<void> {
+    if (Platform.OS !== "android") return;
+    const permissions = Number(Platform.Version) >= 31
+      ? [PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN, PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT]
+      : [PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION];
+    const granted = await PermissionsAndroid.requestMultiple(permissions);
+    if (permissions.some((permission) => granted[permission] !== PermissionsAndroid.RESULTS.GRANTED)) {
+      throw new Error("Allow Nearby devices permission in Android Settings to scan for wearables.");
+    }
+  }
+
+  /**
+   * Scan for nearby Bluetooth devices.
+   *
+   * The scan is deliberately unfiltered so everything the phone can see shows
+   * up, the way the system Bluetooth list does. A device is only labelled as
+   * a wearable when it advertises the Bluetooth SIG Heart Rate service, so
+   * no vendor-specific guess is made.
+   */
+  async scan(timeoutMs = 8000): Promise<DiscoveredWatch[]> {
+    await this.requestPermissions();
     const manager = getBleManager();
     if (!manager) throw new Error(this.unavailableReason ?? "Bluetooth is unavailable on this device.");
     const state = await manager.state();
     if (state !== "PoweredOn") throw new Error(state === "Unsupported" ? "This device does not support Bluetooth LE. Use the simulated wearable for testing." : "Turn on Bluetooth before scanning for wearables.");
     const found = new Map<string, DiscoveredWatch>();
     await manager.startDeviceScan(
-      [WATCH_SERVICE_UUID, "0000180d-0000-1000-8000-00805f9b34fb"],
+      null,
       { allowDuplicates: false },
       (error, peripheral) => {
         if (error || !peripheral) return;
+        const serviceUUIDs = peripheral.serviceUUIDs ?? [];
         found.set(peripheral.id, {
           id: peripheral.id,
-          name: peripheral.localName ?? peripheral.name ?? "Wearable",
+          name: peripheral.localName ?? peripheral.name ?? "Unknown device",
           rssi: peripheral.rssi ?? 0,
+          serviceUUIDs,
+          looksLikeWearable: serviceUUIDs.some(
+            (uuid) => uuid.toLowerCase() === HEART_RATE_SERVICE_UUID,
+          ),
         });
       },
     );

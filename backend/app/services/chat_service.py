@@ -854,7 +854,9 @@ def offline_answer(
             quick_replies=classified["quick_replies"] or ["Tell me more", "Open the screen", "Done"],
         )
 
-    if re.fullmatch(r"(hi|hello|hey|good morning|good evening)[!. ]*", q):
+    if intent == "greeting" or re.fullmatch(
+        r"(hi|hello|hey|good morning|good afternoon|good evening)[!. ]*", q
+    ):
         return _envelope(
             "Hi, I'm Mira. I can help with migraine comfort tips, rest, symptom "
             "logging, or explaining your app data. What would help today?",

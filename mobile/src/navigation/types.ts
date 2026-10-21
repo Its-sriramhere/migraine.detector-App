@@ -31,6 +31,7 @@ export type RootStackParamList = {
   Alerts: undefined;
   Demo: undefined;
   Watch: undefined;
+  ConnectWearable: undefined;
   Recommendations: undefined;
   Settings: undefined;
   Reports: undefined;

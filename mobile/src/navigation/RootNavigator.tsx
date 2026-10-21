@@ -22,6 +22,7 @@ import { SleepScreen } from "../screens/SleepScreen";
 import { SplashScreen } from "../screens/SplashScreen";
 import { TrendsScreen } from "../screens/TrendsScreen";
 import { WatchScreen } from "../screens/WatchScreen";
+import { ConnectWearableScreen } from "../screens/ConnectWearableScreen";
 import { AuthStack } from "./AuthStack";
 import { MainTabs } from "./MainTabs";
 import type { RootStackParamList } from "./types";
@@ -60,6 +61,10 @@ export function RootNavigator() {
             <Stack.Screen name="Demo" component={DemoScreen} />
             <Stack.Screen name="Developer" component={DeveloperScreen} />
             <Stack.Screen name="Watch" component={WatchScreen} />
+            <Stack.Screen
+              name="ConnectWearable"
+              component={ConnectWearableScreen}
+            />
             <Stack.Screen
               name="Recommendations"
               component={RecommendationsScreen}

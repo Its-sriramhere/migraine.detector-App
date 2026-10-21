@@ -39,6 +39,7 @@
       "@react-native-community/datetimepicker",
       "expo-sharing",
       "./plugins/withReleaseSigning",
+      "./plugins/withBondedDevices",
       [
         "react-native-ble-plx",
         {

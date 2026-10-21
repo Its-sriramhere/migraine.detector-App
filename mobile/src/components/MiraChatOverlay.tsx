@@ -76,19 +76,6 @@ export function MiraChatOverlay({
       .catch(() => undefined);
   }, [visible, guide]);
 
-  // Opening with a topic asks that question straight away, so the chat opens
-  // with the answer rather than an empty panel.
-  useEffect(() => {
-    if (!visible || !topicId || askedTopic.current === topicId) return;
-    askedTopic.current = topicId;
-    const question =
-      topicId === "status"
-        ? "What is my current status and what should I work on?"
-        : `Explain ${topicId} and guide me through it.`;
-    void send(question, topicId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, topicId]);
-
   useEffect(() => {
     if (visible) {
       scrollRef.current?.scrollToEnd({ animated: true });
@@ -137,6 +124,19 @@ export function MiraChatOverlay({
       setBusy(false);
     }
   };
+
+  // Opening with a topic asks that question straight away, so the chat opens
+  // with the answer rather than an empty panel.
+  useEffect(() => {
+    if (!visible || !topicId || askedTopic.current === topicId) return;
+    askedTopic.current = topicId;
+    const question =
+      topicId === "status"
+        ? "What is my current status and what should I work on?"
+        : `Explain ${topicId} and guide me through it.`;
+    void send(question, topicId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, topicId]);
 
   const tourFeature: ChatFeature | undefined =
     tourStep >= 0 && guide
@@ -311,7 +311,7 @@ export function MiraChatOverlay({
                         <Text style={styles.emergencyBody}>{m.content}</Text>
                       </View>
                     ) : (
-                      <MessageReveal>
+                      <MessageReveal instant={lowStimulation || reduced}>
                         <View
                           style={[
                             styles.bubble,

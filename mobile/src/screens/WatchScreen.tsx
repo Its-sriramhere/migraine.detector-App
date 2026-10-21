@@ -164,6 +164,12 @@ export function WatchScreen({ navigation }: Props) {
       />
 
       <PrimaryButton
+        title="Find devices"
+        variant="secondary"
+        onPress={() => navigation.navigate("ConnectWearable")}
+      />
+
+      <PrimaryButton
         title={simulated ? "Connect a real wearable" : "Use the simulated wearable"}
         variant="ghost"
         onPress={() => {
