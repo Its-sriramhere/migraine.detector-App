@@ -9,10 +9,10 @@ services:
     healthCheckPath: /api/chat/status
     autoDeploy: true
     envVars:
+      # Supabase Postgres (IPv4 pooler; the direct db host is IPv6-only).
+      # The password must be URL-encoded, so "@" becomes "%40".
       - key: DATABASE_URL
-        fromDatabase:
-          name: migraine-detector-db
-          property: connectionString
+        sync: false
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_PROJECT_REF
@@ -35,9 +35,3 @@ services:
         value: gpt-4.1-mini
       - key: DEVELOPER_EMAILS
         value: developer@migraine.example.com
-
-databases:
-  - name: migraine-detector-db
-    plan: free
-    databaseName: migraine_detector
-    user: postgres
