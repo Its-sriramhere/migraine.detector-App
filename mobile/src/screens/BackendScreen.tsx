@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ScrollView, StyleSheet, Text } from "react-native";
+import { Animated, ScrollView, StyleSheet, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { AppHeader } from "../components/AppHeader";
@@ -9,6 +9,7 @@ import { config, normalizeBackendUrl, saveBackendUrl } from "../constants/config
 import { colors } from "../constants/colors";
 import { clearToken } from "../services/api";
 import { useAuth } from "../hooks/useAuth";
+import { useSectionEntrance } from "../hooks/useSectionEntrance";
 import type { RootStackParamList } from "../navigation/types";
 
 export function BackendScreen({ navigation }: NativeStackScreenProps<RootStackParamList, "Backend">) {
@@ -17,6 +18,7 @@ export function BackendScreen({ navigation }: NativeStackScreenProps<RootStackPa
   const [address, setAddress] = useState(config.apiBaseUrl);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const entrance = useSectionEntrance(4);
   const check = async () => {
     const base = normalizeBackendUrl(address);
     const controller = new AbortController();
@@ -44,19 +46,26 @@ export function BackendScreen({ navigation }: NativeStackScreenProps<RootStackPa
     } finally { setBusy(false); }
   };
   return (
-    <ScrollView style={styles.page} contentContainerStyle={[styles.content, { paddingTop: insets.top + 16 }]} keyboardShouldPersistTaps="handled">
-      <AppHeader title="Backend connection" onBack={() => navigation.goBack()} />
-      <Text style={styles.body}>{"Point the app at a Migraine Detector backend. Use the public HTTPS address of the deployed API to connect over cellular data from anywhere, or your computer's LAN address (for example http://<your-computer-ip>:8000/api) to test on the same Wi-Fi."}</Text>
-      <Input label="Backend API address" value={address} onChangeText={setAddress} autoCapitalize="none" placeholder="https://your-api.onrender.com/api" />
-      <PrimaryButton title="Test connection" variant="secondary" loading={busy} onPress={() => void run(false)} />
-      <PrimaryButton title="Save and sign in" loading={busy} onPress={() => void run(true)} />
-      {message ? <Text accessibilityLiveRegion="polite" style={styles.body}>{message}</Text> : null}
+    <ScrollView style={styles.page} contentContainerStyle={[styles.content, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24 }]} keyboardShouldPersistTaps="handled">
+      <Animated.View style={entrance(0)}>
+        <AppHeader title="Backend connection" onBack={() => navigation.goBack()} />
+      </Animated.View>
+      <Animated.View style={entrance(1)}>
+        <Text style={styles.body}>{"Point the app at a Migraine Detector backend. Use the public HTTPS address of the deployed API to connect over cellular data from anywhere, or your computer's LAN address (for example http://<your-computer-ip>:8000/api) to test on the same Wi-Fi."}</Text>
+      </Animated.View>
+      <Animated.View style={[styles.formBlock, entrance(2)]}>
+        <Input label="Backend API address" value={address} onChangeText={setAddress} autoCapitalize="none" placeholder="https://your-api.onrender.com/api" />
+        <PrimaryButton title="Test connection" variant="secondary" loading={busy} onPress={() => void run(false)} />
+        <PrimaryButton title="Save and sign in" loading={busy} onPress={() => void run(true)} />
+      </Animated.View>
+      {message ? <Animated.View style={entrance(3)}><Text accessibilityLiveRegion="polite" style={styles.body}>{message}</Text></Animated.View> : null}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: colors.background },
-  content: { padding: 16, gap: 20 },
+  content: { padding: 16, gap: 20, flexGrow: 1 },
+  formBlock: { gap: 20 },
   body: { fontSize: 14, lineHeight: 22, color: colors.textSecondary },
 });

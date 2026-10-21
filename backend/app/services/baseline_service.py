@@ -52,7 +52,7 @@ def risk_factors_from_profile(profile: Optional[UserRiskProfile]) -> RiskFactors
     if profile is None:
         return f
 
-    f.migraine_history_score = max(0.0, float(profile.migraine_history_score or 0.0))
+    f.migraine_frequency_score = max(0.0, float(profile.migraine_history_score or 0.0))
 
     stress = profile.stress_profile or ""
     f.stress_score = STRESS_SCORES.get(stress, 0.0)

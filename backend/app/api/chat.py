@@ -8,29 +8,39 @@ The assistant answers two kinds of question:
   language model when ``OPENAI_API_KEY`` is configured
 
 The API key never leaves the backend.
+
+Safety is screened on every message before any intent routing, and the
+response uses the structured envelope from the Mira conversation playbook:
+intent, safety level, up to three quick replies, optional UI actions and the
+content version.
 """
 
 from __future__ import annotations
 
 import json
+import re
 import urllib.error
 import urllib.request
 from typing import Any, Optional
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
 
 from ..core.config import settings
+from ..db.session import get_db
+from ..models import User
 from ..schemas import (
     ChatGuideOut,
     ChatRequest,
     ChatResponse,
     ChatStatusOut,
 )
-from ..services import chat_service
+from ..services import chat_service, mira_content, mira_intents, status_service
+from .deps import get_current_user_optional
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
-INSTRUCTIONS = """You are Mira, a calm, concise assistant inside Migraine Detector, a prototype wearable migraine wellness app.
+INSTRUCTIONS = """You are Mira, an assistant inside Migraine Detector, a prototype wearable migraine wellness app.
 Answer general migraine and health education questions in accessible language, generally 2-5 short sentences, and respond in the user's language when possible.
 Migraine Detector is a research prototype. Its risk scores, alert cards and trend lines are illustrative rather than the output of a clinically validated predictive model. Do not claim the system can detect or forecast attacks.
 App feature questions are handled separately by the deterministic guide; if such a question reaches you, do not invent features or actual integration.
@@ -47,7 +57,12 @@ def _ai_mode() -> bool:
 
 @router.get("/status", response_model=ChatStatusOut)
 def chat_status() -> ChatStatusOut:
-    return ChatStatusOut(mode="ai" if _ai_mode() else "demo", guide=True)
+    return ChatStatusOut(
+        mode="ai" if _ai_mode() else "demo",
+        guide=True,
+        content_version=mira_content.CONTENT_VERSION,
+        review_status=mira_content.REVIEW_STATUS_DRAFT,
+    )
 
 
 @router.get("/guide", response_model=ChatGuideOut)
@@ -57,6 +72,8 @@ def chat_guide() -> ChatGuideOut:
         tour_ids=chat_service.TOUR_IDS,
         questions=chat_service.APP_QUESTIONS,
         health_prompts=chat_service.HEALTH_PROMPTS,
+        cards=mira_content.content_payload(),
+        content_version=mira_content.CONTENT_VERSION,
     )
 
 
@@ -111,8 +128,30 @@ def _call_model(messages: list[dict[str, str]], readings: Optional[dict[str, flo
     return text or "I could not generate an answer. Please try again."
 
 
+def _validate_model_output(text: str) -> str:
+    """Reject a model reply that breaks a hard safety rule.
+
+    The prompt alone is not a guarantee, so the model output is re-screened
+    for emergency phrasing and for medication dosing before it is shown.
+    """
+    if not text:
+        return "I could not generate an answer. Please try again."
+    if chat_service.has_urgent_symptoms(text):
+        return chat_service.EMERGENCY_TEXT
+    if re.search(r"\b(take|use|swallow|pop)\s+\d+\s*(tablet|pill|mg|mcg|capsule)s?\b", text, re.IGNORECASE):
+        return (
+            "I can't suggest a dose. Follow the plan from your clinician, or ask "
+            "a pharmacist or clinician before taking another dose."
+        )
+    return text
+
+
 @router.post("", response_model=ChatResponse)
-def chat(body: ChatRequest) -> ChatResponse:
+def chat(
+    body: ChatRequest,
+    db: Session = Depends(get_db),
+    current: Optional[User] = Depends(get_current_user_optional),
+) -> ChatResponse:
     messages = [
         {"role": m.role, "content": m.content.strip()}
         for m in body.messages[-10:]
@@ -127,16 +166,41 @@ def chat(body: ChatRequest) -> ChatResponse:
     # Safety first, before anything else touches the question.
     if chat_service.has_urgent_symptoms(question):
         return ChatResponse(
-            reply=chat_service.EMERGENCY_TEXT, mode="safety", topic_id=None
+            reply=chat_service.EMERGENCY_TEXT,
+            mode="safety",
+            topic_id=None,
+            intent="severe_headache",
+            safety_level=mira_intents.SAFETY_EMERGENCY,
+            quick_replies=[{"id": "emergency_help", "label": "Emergency help"}],
         )
 
-    canned = chat_service.answer_with_context(messages, body.topic_id)
+    # Personal context is only available for a signed-in user, and is only
+    # ever used for the status and data intents.
+    status_ctx = None
+    if current is not None:
+        try:
+            status_ctx = status_service.assessment_status(db, current.id)
+        except Exception:  # pragma: no cover - never block a chat reply
+            status_ctx = None
 
-    # App help stays deterministic even when an AI key is configured.
-    if canned["mode"] == "guide" or not _ai_mode():
-        return ChatResponse(
-            reply=canned["reply"], mode=canned["mode"], topic_id=canned.get("topic_id")
+    canned = chat_service.answer_with_context(
+        messages, body.topic_id, status=status_ctx
+    )
+
+    # App help and anything that needs the user's own data stays
+    # deterministic even when an AI key is configured. A safety answer is
+    # never sent to the model at all.
+    if (
+        canned["mode"] == "guide"
+        or canned["safety_level"] in (
+            mira_intents.SAFETY_EMERGENCY,
+            mira_intents.SAFETY_PROMPT_CARE,
+            mira_intents.SAFETY_CONSENT_REQUIRED,
+            mira_intents.SAFETY_AUTH_AND_CONFIRMATION,
         )
+        or not _ai_mode()
+    ):
+        return ChatResponse(**canned)
 
     readings = (
         chat_service.safe_metrics(body.wearable_data)
@@ -144,8 +208,17 @@ def chat(body: ChatRequest) -> ChatResponse:
         else None
     )
     try:
-        reply = _call_model(messages, readings)
+        reply = _validate_model_output(_call_model(messages, readings))
     except HTTPException:
         # Keep the local guide usable when the optional provider is down.
-        return ChatResponse(reply=canned["reply"] + "\n\nAI is unavailable; this answer comes from the built-in guide.", mode=canned["mode"], topic_id=canned.get("topic_id"))
-    return ChatResponse(reply=reply, mode="ai", topic_id=None)
+        canned = dict(canned)
+        canned["reply"] = (
+            canned["reply"]
+            + "\n\nAI is unavailable; this answer comes from the built-in guide."
+        )
+        return ChatResponse(**canned)
+    canned = dict(canned)
+    canned["reply"] = reply
+    canned["mode"] = "ai"
+    canned["topic_id"] = None
+    return ChatResponse(**canned)

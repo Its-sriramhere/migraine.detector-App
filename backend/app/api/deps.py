@@ -22,3 +22,23 @@ def get_current_user(
     if user is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "User not found")
     return user
+
+
+def get_current_user_optional(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    db: Session = Depends(get_db),
+) -> User | None:
+    """The signed-in user, or None.
+
+    Used by endpoints that stay public but can personalise their answer for a
+    signed-in user. A bad token is treated as signed out rather than an error.
+    """
+    if credentials is None:
+        return None
+    payload = decode_access_token(credentials.credentials)
+    if payload is None or "sub" not in payload:
+        return None
+    try:
+        return db.get(User, int(payload["sub"]))
+    except (TypeError, ValueError):
+        return None

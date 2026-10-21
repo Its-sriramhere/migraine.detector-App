@@ -1,7 +1,7 @@
 import Slider from "@react-native-community/slider";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Animated, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppHeader } from "../components/AppHeader";
 import { AdviceList } from "../components/AdviceList";
@@ -13,10 +13,12 @@ import { RiskBadge } from "../components/RiskBadge";
 import { colors } from "../constants/colors";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
+import { useSectionEntrance } from "../hooks/useSectionEntrance";
 import type { Prediction, ScenarioName } from "../types";
 import { ApiError } from "../services/api";
 import * as sensorService from "../services/sensorService";
 import type { RootStackParamList } from "../navigation/types";
+
 
 type Props = NativeStackScreenProps<RootStackParamList, "Demo">;
 
@@ -79,6 +81,7 @@ export function DemoScreen({ navigation }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const entrance = useSectionEntrance(7);
 
   useEffect(() => {
     sensorService
@@ -170,134 +173,152 @@ export function DemoScreen({ navigation }: Props) {
       style={styles.wrap}
       contentContainerStyle={[
         styles.content,
-        { paddingTop: insets.top + spacing.base },
+        {
+          paddingTop: insets.top + spacing.base,
+          paddingBottom: insets.bottom + spacing.xl,
+        },
       ]}
     >
-      <AppHeader title="Demo Lab" layout="left" titleStyle={styles.title} onBack={() => navigation.goBack()} />
-      <Text style={styles.sub}>
-        Presets and custom readings run through the same pipeline as a paired
-        wearable: preprocessing → features → model → explanation → risk.
-      </Text>
-      <DemoBanner />
+      <Animated.View style={entrance(0)}>
+        <AppHeader title="Demo Lab" layout="left" titleStyle={styles.title} onBack={() => navigation.goBack()} />
+      </Animated.View>
+      <Animated.View style={entrance(1)}>
+        <Text style={styles.sub}>
+          Presets and custom readings run through the same pipeline as a paired
+          wearable: preprocessing → features → model → explanation → risk.
+        </Text>
+      </Animated.View>
+      <Animated.View style={entrance(2)}>
+        <DemoBanner />
+      </Animated.View>
 
-      <Text style={styles.section}>Pipeline presets</Text>
-      <View style={styles.chips}>
-        {PRESETS.map((p) => (
-          <Chip
-            key={p.name}
-            label={p.label}
-            selected={scenario === p.name}
-            onPress={() => void applyPreset(p.name)}
+      <Animated.View style={[styles.block, entrance(3)]}>
+        <Text style={styles.section}>Pipeline presets</Text>
+        <View style={styles.chips}>
+          {PRESETS.map((p) => (
+            <Chip
+              key={p.name}
+              label={p.label}
+              selected={scenario === p.name}
+              onPress={() => void applyPreset(p.name)}
+            />
+          ))}
+        </View>
+        <Text style={styles.note}>
+          {PRESETS.find((p) => p.name === scenario)?.note}
+        </Text>
+      </Animated.View>
+
+      <Animated.View style={entrance(4)}>
+        <View style={styles.streamRow}>
+          <Button
+            title={streaming ? "Stop stream" : "Start simulated stream"}
+            variant={streaming ? "secondary" : "primary"}
+            onPress={() => (streaming ? void stopStream() : void startStream())}
+            loading={busy}
           />
-        ))}
-      </View>
-      <Text style={styles.note}>
-        {PRESETS.find((p) => p.name === scenario)?.note}
-      </Text>
-
-      <View style={styles.streamRow}>
-        <Button
-          title={streaming ? "Stop stream" : "Start simulated stream"}
-          variant={streaming ? "secondary" : "primary"}
-          onPress={() => (streaming ? void stopStream() : void startStream())}
-          loading={busy}
-        />
-        {streaming ? (
-          <View style={styles.streamingBadge}>
-            <Text style={styles.streamingText}>● STREAMING {scenario}</Text>
-          </View>
-        ) : null}
-      </View>
-
-      <Text style={styles.section}>Live insight — why this risk</Text>
-      <Card>
-        {prediction ? (
-          <>
-            <View style={styles.insightHead}>
-              <Text style={styles.insightScore}>
-                {Math.round(prediction.risk_score)}%
-              </Text>
-              <RiskBadge level={prediction.risk_level} />
+          {streaming ? (
+            <View style={styles.streamingBadge}>
+              <Text style={styles.streamingText}>● STREAMING {scenario}</Text>
             </View>
-            {topFeatures.map((f) => (
-              <View key={f.id ?? f.feature_name} style={styles.featureRow}>
-                <Text style={styles.featureName}>{f.feature_name}</Text>
-                <Text
-                  style={[
-                    styles.featureValue,
-                    {
-                      color:
-                        f.contribution >= 0 ? colors.highText : colors.lowText,
-                    },
-                  ]}
-                >
-                  {f.contribution >= 0 ? "+" : ""}
-                  {f.contribution.toFixed(1)}
-                </Text>
-              </View>
-            ))}
-            <AdviceList advice={prediction.advice} title="Calming steps" />
-          </>
-        ) : (
-          <Text style={styles.note}>
-            No prediction yet — sample a preset to see the explanation.
-          </Text>
-        )}
-        <Text style={styles.count}>{count} readings sent in this session</Text>
-      </Card>
+          ) : null}
+        </View>
+      </Animated.View>
 
-      <Text style={styles.section}>Custom reading</Text>
-      <Card>
-        {SLIDERS.map((s) => {
-          const raw = values[s.key] ?? s.min;
-          const shown = s.scale ? Math.round(raw * s.scale) : raw;
-          return (
-            <View key={s.key} style={styles.sliderBlock}>
-              <View style={styles.sliderHead}>
-                <Text style={styles.sliderLabel}>{s.label}</Text>
-                <Text style={styles.sliderValue}>
-                  {shown} {s.unit}
+      <Animated.View style={[styles.block, entrance(5)]}>
+        <Text style={styles.section}>Live insight — why this risk</Text>
+        <Card>
+          {prediction ? (
+            <>
+              <View style={styles.insightHead}>
+                <Text style={styles.insightScore}>
+                  {Math.round(prediction.risk_score)}%
                 </Text>
+                <RiskBadge level={prediction.risk_level} />
               </View>
-              <Slider
-                style={styles.slider}
-                minimumValue={s.min}
-                maximumValue={s.max}
-                step={s.step}
-                value={raw}
-                onValueChange={(v) => onSlider(s.key, v)}
-                minimumTrackTintColor={colors.primary}
-                maximumTrackTintColor={colors.border}
-                thumbTintColor={colors.primary}
-                accessibilityLabel={s.label}
-              />
-            </View>
-          );
-        })}
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-        <Button
-          title="Send reading"
-          variant="secondary"
-          onPress={() =>
-            void push({
-              heart_rate: values.heart_rate,
-              hrv: values.hrv,
-              systolic_bp: values.systolic_bp,
-              diastolic_bp: values.diastolic_bp,
-              spo2: values.spo2,
-              temperature: values.temperature,
-              activity: values.activity,
-            })
-          }
-        />
-      </Card>
+              {topFeatures.map((f) => (
+                <View key={f.id ?? f.feature_name} style={styles.featureRow}>
+                  <Text style={styles.featureName}>{f.feature_name}</Text>
+                  <Text
+                    style={[
+                      styles.featureValue,
+                      {
+                        color:
+                          f.contribution >= 0 ? colors.highText : colors.lowText,
+                      },
+                    ]}
+                  >
+                    {f.contribution >= 0 ? "+" : ""}
+                    {f.contribution.toFixed(1)}
+                  </Text>
+                </View>
+              ))}
+              <AdviceList advice={prediction.advice} title="Calming steps" />
+            </>
+          ) : (
+            <Text style={styles.note}>
+              No prediction yet — sample a preset to see the explanation.
+            </Text>
+          )}
+          <Text style={styles.count}>{count} readings sent in this session</Text>
+        </Card>
+      </Animated.View>
+
+      <Animated.View style={[styles.block, entrance(6)]}>
+        <Text style={styles.section}>Custom reading</Text>
+        <Card>
+          {SLIDERS.map((s) => {
+            const raw = values[s.key] ?? s.min;
+            const shown = s.scale ? Math.round(raw * s.scale) : raw;
+            return (
+              <View key={s.key} style={styles.sliderBlock}>
+                <View style={styles.sliderHead}>
+                  <Text style={styles.sliderLabel}>{s.label}</Text>
+                  <Text style={styles.sliderValue}>
+                    {shown} {s.unit}
+                  </Text>
+                </View>
+                <Slider
+                  style={styles.slider}
+                  minimumValue={s.min}
+                  maximumValue={s.max}
+                  step={s.step}
+                  value={raw}
+                  onValueChange={(v) => onSlider(s.key, v)}
+                  minimumTrackTintColor={colors.primary}
+                  maximumTrackTintColor={colors.border}
+                  thumbTintColor={colors.primary}
+                  accessibilityLabel={s.label}
+                />
+              </View>
+            );
+          })}
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+          <Button
+            title="Send reading"
+            variant="secondary"
+            onPress={() =>
+              void push({
+                heart_rate: values.heart_rate,
+                hrv: values.hrv,
+                systolic_bp: values.systolic_bp,
+                diastolic_bp: values.diastolic_bp,
+                spo2: values.spo2,
+                temperature: values.temperature,
+                activity: values.activity,
+              })
+            }
+          />
+        </Card>
+      </Animated.View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.base, gap: spacing.base },
+  content: { padding: spacing.base, gap: spacing.base, flexGrow: 1 },
+  block: { gap: spacing.base },
   title: { ...typography.h1, color: colors.textPrimary },
   sub: { ...typography.bodySmall, color: colors.textSecondary },
   section: { ...typography.h2, color: colors.textPrimary },

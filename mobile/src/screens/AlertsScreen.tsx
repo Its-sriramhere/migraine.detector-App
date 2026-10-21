@@ -1,6 +1,6 @@
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Activity, AlertTriangle, ArrowUpRight, Droplets, Heart, Moon } from "lucide-react-native";
 import { AppHeader } from "../components/AppHeader";
@@ -16,6 +16,7 @@ import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
 import { useAlerts } from "../hooks/useAlerts";
 import { useRisk } from "../hooks/useRisk";
+import { useSectionEntrance } from "../hooks/useSectionEntrance";
 import type { RootStackParamList } from "../navigation/types";
 import { riskSentence } from "../utils/formatting";
 
@@ -110,6 +111,7 @@ export function AlertsScreen({ navigation }: Props) {
   const [tab, setTab] = useState<Tab>("all");
   const { alerts, loading, error, reload, acknowledge, feedback } = useAlerts(true);
   const { prediction, loading: riskLoading } = useRisk(true);
+  const entrance = useSectionEntrance(5);
 
   const level = prediction?.risk_level ?? "low";
   const rc = riskColors(level);
@@ -124,29 +126,36 @@ export function AlertsScreen({ navigation }: Props) {
       style={styles.wrap}
       contentContainerStyle={[
         styles.content,
-        { paddingTop: insets.top + spacing.base },
+        {
+          paddingTop: insets.top + spacing.base,
+          paddingBottom: insets.bottom + spacing.xl,
+        },
       ]}
     >
-      <AppHeader title="Insights & Alerts" layout="left" titleStyle={styles.pageTitle} onBack={() => navigation.goBack()} />
+      <Animated.View style={entrance(0)}>
+        <AppHeader title="Insights & Alerts" layout="left" titleStyle={styles.pageTitle} onBack={() => navigation.goBack()} />
+      </Animated.View>
 
-      <View style={styles.tabs}>
-        {TABS.map((t) => {
-          const active = t.value === tab;
-          return (
-            <Pressable
-              key={t.value}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: active }}
-              onPress={() => setTab(t.value)}
-              style={[styles.tab, active && styles.tabActive]}
-            >
-              <Text style={[styles.tabText, active && styles.tabTextActive]}>
-                {t.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      <Animated.View style={entrance(1)}>
+        <View style={styles.tabs}>
+          {TABS.map((t) => {
+            const active = t.value === tab;
+            return (
+              <Pressable
+                key={t.value}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: active }}
+                onPress={() => setTab(t.value)}
+                style={[styles.tab, active && styles.tabActive]}
+              >
+                <Text style={[styles.tabText, active && styles.tabTextActive]}>
+                  {t.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </Animated.View>
 
       {riskLoading && !prediction ? (
         <LoadingState message="Loading insights…" />
@@ -154,44 +163,48 @@ export function AlertsScreen({ navigation }: Props) {
         <>
           {tab !== "alerts" ? (
             <>
-              <Card style={styles.insightCard}>
-                <IconCircle
-                  size={48}
-                  background={rc.solid}
-                  color={rc.indicator}
-                >
-                  <AlertTriangle size={22} color={rc.indicator} />
-                </IconCircle>
-                <View style={styles.insightHead}>
-                  <Text style={[styles.insightTitle, { color: rc.text }]}>
-                    {prediction ? `${riskHeadline(level).replace(" RISK", "")} signal detected` : "Waiting for wearable data"}
+              <Animated.View style={entrance(2)}>
+                <Card style={styles.insightCard}>
+                  <IconCircle
+                    size={48}
+                    background={rc.solid}
+                    color={rc.indicator}
+                  >
+                    <AlertTriangle size={22} color={rc.indicator} />
+                  </IconCircle>
+                  <View style={styles.insightHead}>
+                    <Text style={[styles.insightTitle, { color: rc.text }]}>
+                      {prediction ? `${riskHeadline(level).replace(" RISK", "")} signal detected` : "Waiting for wearable data"}
+                    </Text>
+                    <Text style={styles.insightSub}>
+                      Based on your most recent wearable signals
+                    </Text>
+                  </View>
+                  <Text style={styles.insightBody}>
+                    {prediction
+                      ? riskSentence(level, prediction.risk_score)
+                      : "No prediction yet."}
                   </Text>
-                  <Text style={styles.insightSub}>
-                    Based on your most recent wearable signals
-                  </Text>
-                </View>
-                <Text style={styles.insightBody}>
-                  {prediction
-                    ? riskSentence(level, prediction.risk_score)
-                    : "No prediction yet."}
-                </Text>
-                <PrimaryButton
-                  title="View risk details →"
-                  variant="secondary"
-                  onPress={() =>
-                    navigation.navigate("RiskDetails", {
-                      predictionId: prediction?.id,
-                    })
-                  }
-                />
-                <PrimaryButton
-                  title="See recommendations →"
-                  variant="ghost"
-                  onPress={() => navigation.navigate("Recommendations")}
-                />
-              </Card>
+                  <PrimaryButton
+                    title="View risk details →"
+                    variant="secondary"
+                    onPress={() =>
+                      navigation.navigate("RiskDetails", {
+                        predictionId: prediction?.id,
+                      })
+                    }
+                  />
+                  <PrimaryButton
+                    title="See recommendations →"
+                    variant="ghost"
+                    onPress={() => navigation.navigate("Recommendations")}
+                  />
+                </Card>
+              </Animated.View>
 
-              <Text style={styles.section}>Key Factors</Text>
+              <Animated.View style={entrance(3)}>
+                <Text style={styles.section}>Key Factors</Text>
+              </Animated.View>
               {factors.length === 0 ? (
                 <Card>
                   <Text style={styles.insightSub}>
@@ -221,7 +234,9 @@ export function AlertsScreen({ navigation }: Props) {
 
           {tab !== "insights" ? (
             <>
-              <Text style={styles.section}>Alerts ({alerts.length})</Text>
+              <Animated.View style={entrance(4)}>
+                <Text style={styles.section}>Alerts ({alerts.length})</Text>
+              </Animated.View>
               {loading ? (
                 <LoadingState message="Loading alerts…" />
               ) : error ? (
@@ -248,12 +263,13 @@ export function AlertsScreen({ navigation }: Props) {
         </>
       )}
     </ScrollView>
+
   );
 }
 
 const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.base, gap: spacing.md },
+  content: { padding: spacing.base, gap: spacing.md, flexGrow: 1 },
   pageTitle: { ...typography.title, color: colors.textPrimary },
   tabs: { flexDirection: "row", gap: spacing.sm },
   tab: {

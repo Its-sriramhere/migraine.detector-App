@@ -15,14 +15,25 @@ from __future__ import annotations
 import re
 import math
 import unicodedata
+import uuid
 from typing import Any, Iterable, Optional
+
+from . import mira_content, mira_intents
 
 APP_NAME = "Migraine Detector"
 
 EMERGENCY_TEXT = (
-    "Your symptoms may indicate a medical emergency. Seek immediate emergency "
-    "care or call your local emergency number now. Do not rely on this chatbot "
-    "or a smartwatch reading."
+    "A sudden severe headache or new weakness, speech, or vision changes can "
+    "be an emergency. Please call your local emergency number now or get "
+    "emergency help immediately. Do not drive yourself. Mira can't determine "
+    "the cause through chat or watch readings."
+)
+
+PROMPT_CARE_TEXT = (
+    "Because this headache is lasting longer than usual or is different from "
+    "your normal pattern, please contact a healthcare professional promptly. "
+    "If you develop sudden weakness, trouble speaking, severe confusion, or a "
+    "sudden exceptionally painful headache, seek emergency help."
 )
 
 # --- Feature guide ---------------------------------------------------------
@@ -534,18 +545,30 @@ def format_feature_answer(feature: dict[str, Any], concise: bool = False) -> str
 
 # --- Safety ----------------------------------------------------------------
 
-_URGENT_PATTERNS = [
-    re.compile(p, re.IGNORECASE)
-    for p in [
-        r"\b(thunderclap|worst headache (?:of|in) (?:my|the) life|sudden (?:worst|severe|explosive) headache)\b",
-        r"\b(?:new |sudden )?(?:one.side weakness|weakness on one side|facial droop|slurred speech|trouble speaking|can't speak|cannot speak|stroke symptoms)\b",
-        r"\b(?:new vision loss|sudden loss of vision|seizure|unconscious|passed out|fainted|fever (?:with|and) stiff neck|stiff neck (?:and|with) fever|can't breathe|cannot breathe|difficulty breathing)\b",
-    ]
-]
+# The playbook's red-flag list lives in mira_intents so the emergency and
+# urgent tiers stay in one place with the intent precedence.
+_URGENT_PATTERNS = [re.compile(p, re.IGNORECASE) for p in mira_intents.EMERGENCY_PATTERNS]
 
 
 def has_urgent_symptoms(question: str) -> bool:
+    """True when the message contains an emergency red flag."""
     return any(pattern.search(str(question or "")) for pattern in _URGENT_PATTERNS)
+
+
+def safety_level_for(question: str) -> str:
+    """The safety tier for a message: emergency, prompt_care or routine."""
+    level, _flags = mira_intents.scan_safety(question)
+    return level
+
+
+# Questions that plainly ask the app to do something. These are answered from
+# the feature guide, which stays the source of truth for what the app has.
+_NAVIGATION_RE = re.compile(
+    r"\b(where (?:can|do) i|how (?:do|can) i|how do i|show me|open|go to|"
+    r"connect|pair|sync|explain|which screen|what does the .* screen|"
+    r"where is the|find the)\b",
+    re.IGNORECASE,
+)
 
 
 def safe_metrics(payload: Any) -> Optional[dict[str, float]]:
@@ -646,32 +669,234 @@ _FALLBACK = (
 )
 
 
-def offline_answer(question: str, topic_id: Optional[str] = None) -> dict[str, Any]:
+def _envelope(
+    reply: str,
+    *,
+    mode: str = "demo",
+    topic_id: Optional[str] = None,
+    intent: str = "unknown",
+    safety_level: str = mira_intents.SAFETY_ROUTINE,
+    quick_replies: Optional[list[str]] = None,
+    ui_actions: Optional[list[dict[str, Any]]] = None,
+    requires_confirmation: bool = False,
+    medical_data_used: bool = False,
+    cards: Optional[list[dict[str, Any]]] = None,
+) -> dict[str, Any]:
+    """Build the full response envelope."""
+    return {
+        "reply": reply,
+        "mode": mode,
+        "topic_id": topic_id,
+        "conversation_id": uuid.uuid4().hex,
+        "intent": intent,
+        "safety_level": safety_level,
+        "content_version": mira_content.CONTENT_VERSION,
+        "quick_replies": [
+            {"id": re.sub(r"[^a-z0-9]+", "_", label.lower()).strip("_"), "label": label}
+            for label in (quick_replies or [])
+        ][:3],
+        "ui_actions": ui_actions or [],
+        "requires_confirmation": requires_confirmation,
+        "medical_data_used": medical_data_used,
+        "cards": cards or [],
+    }
+
+
+def _card_payload(cards: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        {
+            "card_id": c["card_id"],
+            "title": c["title"],
+            "body": c["body"],
+            "category": c["category"],
+            "version": c["version"],
+            "review_status": c["review_status"],
+        }
+        for c in cards
+    ]
+
+
+def offline_answer(
+    question: str,
+    topic_id: Optional[str] = None,
+    status: Optional[dict[str, Any]] = None,
+) -> dict[str, Any]:
     """Deterministic answer from the built-in guide and wellness FAQ."""
     q = normalize_question(question)
 
-    if has_urgent_symptoms(q):
-        return {"reply": EMERGENCY_TEXT, "mode": "safety", "topic_id": None}
+    # --- safety first, before any intent routing ------------------------
+    level, _flags = mira_intents.scan_safety(q)
+    if level == mira_intents.SAFETY_EMERGENCY:
+        return _envelope(
+            EMERGENCY_TEXT,
+            mode="safety",
+            intent="severe_headache",
+            safety_level=mira_intents.SAFETY_EMERGENCY,
+            quick_replies=["Emergency help"],
+        )
+    if level == mira_intents.SAFETY_PROMPT_CARE:
+        return _envelope(
+            PROMPT_CARE_TEXT,
+            mode="safety",
+            intent="urgent_clinical",
+            safety_level=mira_intents.SAFETY_PROMPT_CARE,
+            quick_replies=["Get care info", "Prepare symptom summary"],
+        )
+
+    classified = mira_intents.classify_intent(q)
+    intent = classified["intent"]
+
+    # A question that plainly asks the app to do something is answered from
+    # the feature guide, which is the single source of truth for what the app
+    # contains. Only the conversational intents below take priority.
+    if _NAVIGATION_RE.search(q):
+        feature = find_feature_for_question(q, topic_id)
+        if feature:
+            return _envelope(
+                format_feature_answer(feature, concise=True),
+                mode="guide",
+                topic_id=feature["id"],
+                intent=intent if intent != "unknown" else "app_feature",
+                safety_level=mira_intents.SAFETY_ROUTINE,
+                quick_replies=classified["quick_replies"] or ["Tell me more", "Open the screen", "Done"],
+            )
+
+    # --- recording an episode needs an explicit confirmation ---------------
+    if intent == "log_episode":
+        return _envelope(
+            "Before I save anything, here is what I have so far. I will only "
+            "write it to your Migraine History after you confirm.",
+            mode="demo",
+            intent=intent,
+            safety_level=mira_intents.SAFETY_CONSENT_REQUIRED,
+            quick_replies=["Save", "Edit details", "Cancel"],
+            ui_actions=[{"type": "save_episode", "label": "Save", "payload": {}}],
+            requires_confirmation=True,
+        )
+
+    # --- deleting data needs authorisation and a confirmation ---------------
+    if intent == "privacy_delete":
+        return _envelope(
+            "I can show you the data controls, but I will only delete "
+            "something once the system confirms the request went through. "
+            "Nothing is deleted by this message.",
+            mode="demo",
+            intent=intent,
+            safety_level=mira_intents.SAFETY_AUTH_AND_CONFIRMATION,
+            quick_replies=["Privacy controls", "Cancel"],
+            ui_actions=[{"type": "open_privacy", "label": "Privacy controls", "payload": {}}],
+            requires_confirmation=True,
+        )
+
+    # --- medication questions never get a dose ------------------------------
+    if intent == "medication_question":
+        return _envelope(
+            "That depends on the exact medicine, dose, timing, and your medical "
+            "history, so I can't safely decide for you. Follow your prescribed "
+            "plan or contact a pharmacist or clinician before another dose.",
+            mode="demo",
+            intent=intent,
+            safety_level=mira_intents.SAFETY_ROUTINE,
+            quick_replies=["Log medication", "Comfort options", "Done"],
+        )
+
+    # --- personal status -------------------------------------------------
+    if intent in ("prediction_explain", "no_data") and status:
+        from .status_service import status_reply
+
+        return _envelope(
+            status_reply(status),
+            mode="guide",
+            topic_id="status",
+            intent="status",
+            safety_level=mira_intents.SAFETY_ROUTINE,
+            quick_replies=["Focus areas", "Rest tips", "Done"],
+            medical_data_used=True,
+            cards=_card_payload(mira_content.cards_for("rest_guidance")[:1]),
+        )
+
+    if re.search(r"\b(my (current )?status|how am i doing|what does my (?:assessment|profile) say|my baseline|how can i (?:reduce|lower|improve) (?:my )?risk|what should i (?:do|work on))\b", q) and status:
+        from .status_service import status_reply
+
+        return _envelope(
+            status_reply(status),
+            mode="guide",
+            topic_id="status",
+            intent="status",
+            safety_level=mira_intents.SAFETY_ROUTINE,
+            quick_replies=["Focus areas", "Rest tips", "Done"],
+            medical_data_used=True,
+            cards=_card_payload(mira_content.cards_for("rest_guidance")[:1]),
+        )
 
     if re.search(r"\b(what is|what's|tell me|why is) my (current )?(risk|score|hrv|blood pressure|spo2|sleep)\b", q):
-        return {"reply": "I don't have access to your personal readings in this conversation. Open Home for the latest values, Migraine Prediction for the risk estimate, or Monitoring for the measurement history. Tell me which measurement you want explained; I can describe its meaning without guessing your results.", "mode": "guide", "topic_id": "dashboard"}
+        return _envelope(
+            "I don't have access to your personal readings in this conversation. "
+            "Open Home for the latest values, Migraine Prediction for the risk "
+            "estimate, or Monitoring for the measurement history. Tell me which "
+            "measurement you want explained; I can describe its meaning without "
+            "guessing your results.",
+            mode="guide",
+            topic_id="dashboard",
+            intent=intent,
+            safety_level=mira_intents.SAFETY_ROUTINE,
+            quick_replies=["Open Home", "Monitoring", "Done"],
+        )
 
     feature = find_feature_for_question(q, topic_id)
     if feature:
-        return {
-            "reply": format_feature_answer(feature, concise=True),
-            "mode": "guide",
-            "topic_id": feature["id"],
-        }
+        return _envelope(
+            format_feature_answer(feature, concise=True),
+            mode="guide",
+            topic_id=feature["id"],
+            intent=intent if intent != "unknown" else "app_feature",
+            safety_level=mira_intents.SAFETY_ROUTINE,
+            quick_replies=classified["quick_replies"] or ["Tell me more", "Open the screen", "Done"],
+        )
 
     if re.fullmatch(r"(hi|hello|hey|good morning|good evening)[!. ]*", q):
-        return {"reply": "Hi, I'm Mira. Ask me about a screen, connecting your watch, or a migraine wellness topic. What would you like help with?", "mode": "demo", "topic_id": None}
+        return _envelope(
+            "Hi, I'm Mira. I can help with migraine comfort tips, rest, symptom "
+            "logging, or explaining your app data. What would help today?",
+            mode="demo",
+            intent="greeting",
+            safety_level=mira_intents.SAFETY_ROUTINE,
+            quick_replies=["Headache help", "Help me rest", "My data"],
+        )
+
+    # --- knowledge cards ---------------------------------------------------
+    intent_cards = mira_content.cards_for(intent)
+    if intent_cards:
+        card = mira_content.best_card(intent, q) or intent_cards[0]
+        return _envelope(
+            card["body"],
+            mode="demo",
+            intent=intent,
+            safety_level=classified["safety_level"],
+            quick_replies=card["quick_replies"] or classified["quick_replies"],
+            requires_confirmation=(
+                classified["safety_level"] == mira_intents.SAFETY_CONSENT_REQUIRED
+            ),
+            cards=_card_payload(intent_cards[:2]),
+        )
 
     for pattern, reply in _WELLNESS:
         if re.search(pattern, q):
-            return {"reply": reply, "mode": "demo", "topic_id": None}
+            return _envelope(
+                reply,
+                mode="demo",
+                intent=intent,
+                safety_level=classified["safety_level"],
+                quick_replies=classified["quick_replies"],
+            )
 
-    return {"reply": _FALLBACK, "mode": "demo", "topic_id": None}
+    return _envelope(
+        _FALLBACK,
+        mode="demo",
+        intent=intent,
+        safety_level=mira_intents.SAFETY_ROUTINE,
+        quick_replies=["Take the app tour", "Health tips", "Done"],
+    )
 
 
 def normalize_question(question: str) -> str:
@@ -681,7 +906,11 @@ def normalize_question(question: str) -> str:
     return re.sub(r"\s+", " ", q).strip()
 
 
-def answer_with_context(messages: list[dict[str, str]], topic_id: Optional[str] = None) -> dict[str, Any]:
+def answer_with_context(
+    messages: list[dict[str, str]],
+    topic_id: Optional[str] = None,
+    status: Optional[dict[str, Any]] = None,
+) -> dict[str, Any]:
     question = messages[-1]["content"]
     q = normalize_question(question)
     # Only borrow context for explicit short follow-ups. A new health
@@ -694,7 +923,7 @@ def answer_with_context(messages: list[dict[str, str]], topic_id: Optional[str] 
             if feature:
                 topic_id = feature["id"]
                 break
-    return offline_answer(question, topic_id)
+    return offline_answer(question, topic_id, status=status)
 
 
 def feature_payload() -> list[dict[str, Any]]:

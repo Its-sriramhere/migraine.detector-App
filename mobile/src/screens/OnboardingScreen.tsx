@@ -1,13 +1,14 @@
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Animated, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppLogo } from "../components/AppLogo";
 import { OnboardingArt } from "../components/OnboardingArt";
 import { PrimaryButton } from "../components/PrimaryButton";
-import { colors } from "../constants/colors";
+import { colors, themeNew } from "../constants/colors";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
+import { useSectionEntrance } from "../hooks/useSectionEntrance";
 import type { RootStackParamList } from "../navigation/types";
 import { markOnboardingSeen } from "../services/onboardingService";
 import * as userService from "../services/userService";
@@ -40,6 +41,7 @@ export function OnboardingScreen({ navigation }: Props) {
   const [index, setIndex] = useState(0);
   const page = PAGES[index];
   const last = index === PAGES.length - 1;
+  const entrance = useSectionEntrance(5);
 
   const finish = async () => {
     await markOnboardingSeen();
@@ -65,25 +67,33 @@ export function OnboardingScreen({ navigation }: Props) {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.brand}>
+        <Animated.View style={[styles.brand, entrance(0)]}>
           <AppLogo size={44} />
-        </View>
+        </Animated.View>
 
-        <Text style={styles.eyebrow}>{page.eyebrow}</Text>
-        <Text style={styles.title}>{page.title}</Text>
+        <Animated.View style={[styles.headlineBlock, entrance(1)]}>
+          <Text style={styles.eyebrow}>{page.eyebrow}</Text>
+          <Text style={styles.title}>{page.title}</Text>
+        </Animated.View>
 
-        <View style={styles.artWrap}>
-          <OnboardingArt />
-        </View>
+        <Animated.View style={entrance(2)}>
+          <View style={styles.artWrap}>
+            <OnboardingArt />
+          </View>
+        </Animated.View>
 
-        <Text style={styles.headline}>{page.headline}</Text>
-        <Text style={styles.body}>{page.body}</Text>
+        <Animated.View style={[styles.copyBlock, entrance(3)]}>
+          <Text style={styles.headline}>{page.headline}</Text>
+          <Text style={styles.body}>{page.body}</Text>
+        </Animated.View>
 
-        <View style={styles.dots}>
-          {PAGES.map((p, i) => (
-            <View key={p.eyebrow} style={[styles.dot, i === index && styles.dotActive]} />
-          ))}
-        </View>
+        <Animated.View style={entrance(4)}>
+          <View style={styles.dots}>
+            {PAGES.map((p, i) => (
+              <View key={p.eyebrow} style={[styles.dot, i === index && styles.dotActive]} />
+            ))}
+          </View>
+        </Animated.View>
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.lg }]}>
@@ -103,9 +113,11 @@ export function OnboardingScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: spacing.xl, gap: spacing.sm },
+  wrap: { flex: 1, backgroundColor: themeNew.background },
+  content: { paddingHorizontal: spacing.xl, gap: spacing.sm, flexGrow: 1 },
   brand: { alignItems: "center", marginBottom: spacing.md },
+  headlineBlock: { gap: spacing.sm },
+  copyBlock: { gap: spacing.sm },
   eyebrow: {
     ...typography.microStrong,
     fontSize: 12,

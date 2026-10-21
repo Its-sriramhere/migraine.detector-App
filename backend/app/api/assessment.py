@@ -10,10 +10,12 @@ from ..models import AssessmentResponse, User, UserRiskProfile
 from ..schemas import (
     AssessmentAnswerIn,
     AssessmentQuestionOut,
+    AssessmentStatusOut,
     AssessmentSubmitRequest,
     BaselineEstimates,
     RiskProfileOut,
 )
+from ..services import status_service
 
 router = APIRouter(prefix="/api/assessment", tags=["assessment"])
 
@@ -89,6 +91,22 @@ def get_profile(db: Session = Depends(get_db), current: User = Depends(get_curre
     if d.get("profile_version") is None:
         d["profile_version"] = "v1"
     return RiskProfileOut.model_validate(d)
+
+
+@router.get("/status", response_model=AssessmentStatusOut)
+def get_status(db: Session = Depends(get_db), current: User = Depends(get_current_user)):
+    """Descriptive standing derived from the assessment answers.
+
+    The assessment does not produce a risk score - a score only exists once a
+    sensor reading arrives - so this describes the person's baseline instead
+    of assigning a band.
+    """
+    status_data = status_service.assessment_status(db, current.id)
+    if status_data is None:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND, "Profile not created yet"
+        )
+    return AssessmentStatusOut(**status_data)
 
 
 @router.get("/baseline", response_model=BaselineEstimates)

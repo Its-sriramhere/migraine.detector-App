@@ -63,6 +63,38 @@ class RiskProfileOut(ORMBase):
     caffeine_profile: Optional[str] = None
     trigger_profile: list[Any] = []
     profile_version: str = "v1"
+    # Both are stored by build_risk_profile and read by the risk engine, so
+    # the app needs them to show the same baseline the model uses.
+    sleep_hours: Optional[float] = None
+    resting_hr: Optional[float] = None
+
+
+class StatusFocusArea(BaseModel):
+    area: str
+    detail: str
+    card_id: Optional[str] = None
+
+
+class StatusTip(BaseModel):
+    card_id: str
+    title: str
+    body: str
+
+
+class AssessmentStatusOut(BaseModel):
+    """Descriptive standing derived from the assessment answers.
+
+    Deliberately carries no risk level or score: the band edges are
+    calibrated against sensor readings, not questionnaire answers.
+    """
+    headline: str
+    summary: str
+    focus_areas: list[StatusFocusArea] = []
+    strengths: list[StatusFocusArea] = []
+    tips: list[StatusTip] = []
+    baseline_note: str = ""
+    source_note: str = ""
+    content_version: str = "mira-content-1.0"
 
 
 class BaselineEstimates(BaseModel):
@@ -267,10 +299,35 @@ class ChatRequest(BaseModel):
     )
 
 
+class QuickReply(BaseModel):
+    id: str
+    label: str
+
+
+class UiAction(BaseModel):
+    """Something the client can offer, e.g. saving an episode."""
+
+    type: str
+    label: str
+    payload: dict[str, Any] = {}
+
+
 class ChatResponse(BaseModel):
+    # Legacy fields kept so older clients keep working.
     reply: str
     mode: str = "demo"
     topic_id: Optional[str] = None
+
+    # Structured envelope.
+    conversation_id: str = ""
+    intent: str = "unknown"
+    safety_level: str = "routine"
+    content_version: str = "mira-content-1.0"
+    quick_replies: list[QuickReply] = []
+    ui_actions: list[UiAction] = []
+    requires_confirmation: bool = False
+    medical_data_used: bool = False
+    cards: list[dict[str, Any]] = []
 
 
 class ChatFeatureOut(BaseModel):
@@ -290,11 +347,15 @@ class ChatGuideOut(BaseModel):
     tour_ids: list[str]
     questions: list[dict[str, str]]
     health_prompts: list[str]
+    cards: list[dict[str, Any]] = []
+    content_version: str = "mira-content-1.0"
 
 
 class ChatStatusOut(BaseModel):
     mode: str
     guide: bool = True
+    content_version: str = "mira-content-1.0"
+    review_status: str = "draft"
 
 
 PredictionOut.model_rebuild()

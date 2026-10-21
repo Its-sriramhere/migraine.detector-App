@@ -1,6 +1,7 @@
 import type { NativeStackNavigationProp, NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useState } from "react";
 import {
+  Animated,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -17,10 +18,12 @@ import { ConsentCheck } from "../components/ConsentCheck";
 import { Input } from "../components/Input";
 import { PageTitle } from "../components/PageTitle";
 import { PrimaryButton } from "../components/PrimaryButton";
-import { colors } from "../constants/colors";
+import { colors, themeNew } from "../constants/colors";
+import { radius } from "../constants/radius";
 import { spacing } from "../constants/spacing";
 import { typography } from "../constants/typography";
 import { useAuth } from "../hooks/useAuth";
+import { useSectionEntrance } from "../hooks/useSectionEntrance";
 import type { AuthStackParamList, RootStackParamList } from "../navigation/types";
 import { register } from "../services/authService";
 import { ApiError } from "../services/api";
@@ -38,6 +41,7 @@ export function RegisterScreen({ navigation }: Props) {
   const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const entrance = useSectionEntrance(2);
 
   // The privacy policy lives on the root stack, so it can also be opened
   // before the user has an account.
@@ -83,80 +87,99 @@ export function RegisterScreen({ navigation }: Props) {
       <ScrollView
         contentContainerStyle={[
           styles.content,
-          { paddingTop: insets.top + spacing.xxl, paddingBottom: spacing.xl },
+          {
+            paddingTop: insets.top + spacing.xxl,
+            paddingBottom: insets.bottom + spacing.xl,
+          },
         ]}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.brand}>
-          <BackButton onPress={() => navigation.goBack()} label="Back to sign in" />
-          <AppLogo size={52} />
-        </View>
         <AmbientBackground />
 
-        <PageTitle
-          title="Create account"
-          subtitle="Set up your wearable health profile."
-        />
-        <View style={{ height: spacing.lg }} />
+        <Animated.View style={[styles.brand, entrance(0)]}>
+          <BackButton onPress={() => navigation.goBack()} label="Back to sign in" />
+          <AppLogo size={52} />
+        </Animated.View>
 
-        <Input
-          label="Name"
-          value={name}
-          onChangeText={setName}
-          placeholder="Your name"
-          autoCapitalize="words"
-        />
+        <Animated.View style={[styles.panel, entrance(1)]}>
+          <PageTitle
+            title="Create account"
+            subtitle="Set up your wearable health profile."
+          />
+          <View style={{ height: spacing.lg }} />
 
-        <Input
-          label="Email"
-          value={email}
-          onChangeText={setEmail}
-          placeholder="you@example.com"
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
+          <Input
+            label="Name"
+            value={name}
+            onChangeText={setName}
+            placeholder="Your name"
+            autoCapitalize="words"
+          />
 
-        <Input
-          label="Password"
-          value={password}
-          onChangeText={setPassword}
-          placeholder="Min. 8 characters"
-          secureTextEntry
-          autoCapitalize="none"
-          helper="Stored hashed on the server — never logged or shared."
-        />
+          <Input
+            label="Email"
+            value={email}
+            onChangeText={setEmail}
+            placeholder="you@example.com"
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
 
-        <ConsentCheck checked={consent} onToggle={() => setConsent((c) => !c)}>
-          I consent to health-data processing for risk estimation.
-        </ConsentCheck>
+          <Input
+            label="Password"
+            value={password}
+            onChangeText={setPassword}
+            placeholder="Min. 8 characters"
+            secureTextEntry
+            autoCapitalize="none"
+            helper="Stored hashed on the server �? never logged or shared."
+          />
 
-        <ConsentCheck
-          checked={agreed}
-          onToggle={() => setAgreed((a) => !a)}
-          link={{ label: "Privacy Policy", onPress: openPrivacyPolicy }}
-        >
-          I agree to the terms of use and the
-        </ConsentCheck>
+          <ConsentCheck checked={consent} onToggle={() => setConsent((c) => !c)}>
+            I consent to health-data processing for risk estimation.
+          </ConsentCheck>
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+          <ConsentCheck
+            checked={agreed}
+            onToggle={() => setAgreed((a) => !a)}
+            link={{ label: "Privacy Policy", onPress: openPrivacyPolicy }}
+          >
+            I agree to the terms of use and the
+          </ConsentCheck>
 
-        <PrimaryButton
-          title="Create account"
-          onPress={() => void submit()}
-          loading={busy}
-        />
-        <Pressable onPress={() => navigation.navigate("Login")}>
-          <Text style={styles.link}>Already have an account? Sign in</Text>
-        </Pressable>
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+
+          <PrimaryButton
+            title="Create account"
+            onPress={() => void submit()}
+            loading={busy}
+          />
+          <Pressable onPress={() => navigation.navigate("Login")}>
+            <Text style={styles.link}>Already have an account? Sign in</Text>
+          </Pressable>
+        </Animated.View>
       </ScrollView>
+
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { flex: 1, backgroundColor: colors.background },
+  wrap: { flex: 1, backgroundColor: themeNew.background },
   content: { padding: spacing.xl, flexGrow: 1, justifyContent: "center" },
   brand: { alignItems: "center", marginBottom: spacing.base, gap: spacing.sm },
+  panel: {
+    backgroundColor: themeNew.surface,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: themeNew.border,
+    padding: spacing.xl,
+    shadowColor: "#0B1F3A",
+    shadowOpacity: 0.06,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 2,
+  },
   link: {
     color: colors.primary,
     fontWeight: "600",
