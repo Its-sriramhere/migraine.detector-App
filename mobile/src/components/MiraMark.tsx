@@ -3,9 +3,11 @@ import { StyleSheet, View } from "react-native";
 import { themeNew } from "../constants/colors";
 
 /**
- * The Mira assistant mark: the same brand gradient disc as the app mark with
- * the four-point sparkle in place of the neural motif, so the two read as
- * one family.
+ * The Mira assistant mark.
+ *
+ * The brand sheet shows one mark for both the app and Mira - the Brain + ECG
+ * symbol at two sizes - so this renders the shared brand glyph and only adds
+ * the green "available" dot when asked.
  */
 export function MiraMark({
   size = 58,
@@ -24,7 +26,7 @@ export function MiraMark({
         { width: size, height: size, borderRadius: size / 2 },
       ]}
     >
-      <BrandGlyph size={size} assistant />
+      <BrandGlyph size={size} />
 
       {withStatus ? (
         <View

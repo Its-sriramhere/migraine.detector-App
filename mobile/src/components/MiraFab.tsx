@@ -1,10 +1,23 @@
-import { Pressable, StyleSheet, View } from "react-native";
+import { useEffect, useRef } from "react";
+import {
+  Animated,
+  Easing,
+  Pressable,
+  StyleSheet,
+  View,
+} from "react-native";
 import { themeNew } from "../constants/colors";
-import { AppLogo } from "./AppLogo";
+import { useReducedMotion } from "../hooks/useReducedMotion";
+import { MiraMark } from "./MiraMark";
 
 /**
- * Mira floating button uses the same neural brand mark as the splash screen,
- * with a green availability dot.
+ * Mira floating button.
+ *
+ * Uses the shared brand mark with the green availability dot, and breathes
+ * gently so it reads as an assistant that is present rather than an icon
+ * stuck on the screen. The halo pulses behind the disc and the whole button
+ * floats up and down on a slow loop. Both animations are skipped when the
+ * user has asked for reduced motion.
  *
  * It deliberately overlaps the content above the bottom navigation, the way
  * the Figma frame shows it.
@@ -21,27 +34,115 @@ export function MiraFab({
   bottom?: number;
   right?: number;
 }) {
+  const reduced = useReducedMotion();
+  const float = useRef(new Animated.Value(0)).current;
+  const halo = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (reduced) {
+      float.setValue(0);
+      halo.setValue(0);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(float, {
+          toValue: 1,
+          duration: 2100,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(float, {
+          toValue: 0,
+          duration: 2100,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(halo, {
+          toValue: 1,
+          duration: 2400,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(halo, {
+          toValue: 0,
+          duration: 0,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+    pulse.start();
+    return () => {
+      loop.stop();
+      pulse.stop();
+    };
+  }, [reduced, float, halo]);
+
+  const translateY = float.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -5],
+  });
+  const haloScale = halo.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.86, 1.5],
+  });
+  const haloOpacity = halo.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.32, 0],
+  });
+
   return (
-    <Pressable
-      testID="mira-fab"
-      accessibilityRole="button"
-      accessibilityLabel="Open Mira assistant"
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.fab,
+    <Animated.View
+      pointerEvents="box-none"
+      style={[
+        styles.root,
         { bottom, right },
-        pressed && styles.pressed,
+        { transform: [{ translateY }] },
       ]}
     >
-      <AppLogo size={SIZE} />
-      <View pointerEvents="none" style={styles.status} />
-    </Pressable>
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.halo,
+          { opacity: haloOpacity, transform: [{ scale: haloScale }] },
+        ]}
+      />
+      <Pressable
+        testID="mira-fab"
+        accessibilityRole="button"
+        accessibilityLabel="Open Mira assistant"
+        onPress={onPress}
+        style={({ pressed }) => [styles.fab, pressed && styles.pressed]}
+      >
+        <View pointerEvents="none">
+          <MiraMark size={SIZE} withStatus />
+        </View>
+      </Pressable>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  fab: {
+  root: {
     position: "absolute",
+    width: SIZE,
+    height: SIZE,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  halo: {
+    position: "absolute",
+    width: SIZE,
+    height: SIZE,
+    borderRadius: SIZE / 2,
+    backgroundColor: themeNew.miraPrimary,
+  },
+  fab: {
     width: SIZE,
     height: SIZE,
     borderRadius: SIZE / 2,
@@ -54,15 +155,4 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
   },
   pressed: { transform: [{ scale: 0.92 }], opacity: 0.92 },
-  status: {
-    position: "absolute",
-    top: 5,
-    right: 5,
-    width: 11,
-    height: 11,
-    borderRadius: 6,
-    backgroundColor: themeNew.miraAvailable,
-    borderWidth: 2,
-    borderColor: "#FFFFFF",
-  },
 });
