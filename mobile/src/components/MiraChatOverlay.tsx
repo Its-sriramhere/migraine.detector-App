@@ -12,7 +12,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Send, X } from "lucide-react-native";
+import { AlertTriangle, Moon, Send, X } from "lucide-react-native";
 import { themeNew } from "../constants/colors";
 import { radius } from "../constants/radius";
 import { spacing } from "../constants/spacing";
@@ -20,11 +20,13 @@ import { typography } from "../constants/typography";
 import { TypingDots } from "./TypingDots";
 import { MiraMark } from "./MiraMark";
 import { MessageReveal } from "./MessageReveal";
+import { useReducedMotion } from "../hooks/useReducedMotion";
 import type {
   ChatFeature,
   ChatGuide,
   ChatMessage,
   ChatReply,
+  QuickReply,
 } from "../services/chatService";
 import { getChatGuide, sendChat } from "../services/chatService";
 
@@ -39,14 +41,18 @@ export interface MiraChatOverlayProps {
   onClose: () => void;
   /** Route names the app can navigate to, used by the guide buttons. */
   onNavigate?: (route: string) => void;
+  /** Topic to pre-select, e.g. "status" from the home card. */
+  topicId?: string | null;
 }
 
 export function MiraChatOverlay({
   visible,
   onClose,
   onNavigate,
+  topicId,
 }: MiraChatOverlayProps) {
   const insets = useSafeAreaInsets();
+  const reduced = useReducedMotion();
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: "assistant", content: GREETING },
   ]);
@@ -56,9 +62,12 @@ export function MiraChatOverlay({
   const [guide, setGuide] = useState<ChatGuide | null>(null);
   const [browse, setBrowse] = useState<"app" | "health">("app");
   const [tourStep, setTourStep] = useState(-1);
+  const [quickReplies, setQuickReplies] = useState<QuickReply[]>([]);
+  const [lowStimulation, setLowStimulation] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const inputRef = useRef<TextInput>(null);
   const sending = useRef(false);
+  const askedTopic = useRef<string | null>(null);
 
   useEffect(() => {
     if (!visible || guide) return;
@@ -67,13 +76,26 @@ export function MiraChatOverlay({
       .catch(() => undefined);
   }, [visible, guide]);
 
+  // Opening with a topic asks that question straight away, so the chat opens
+  // with the answer rather than an empty panel.
+  useEffect(() => {
+    if (!visible || !topicId || askedTopic.current === topicId) return;
+    askedTopic.current = topicId;
+    const question =
+      topicId === "status"
+        ? "What is my current status and what should I work on?"
+        : `Explain ${topicId} and guide me through it.`;
+    void send(question, topicId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, topicId]);
+
   useEffect(() => {
     if (visible) {
       scrollRef.current?.scrollToEnd({ animated: true });
     }
   }, [messages, busy, visible]);
 
-  const send = async (question: string = draft, topicId?: string) => {
+  const send = async (question: string = draft, topic?: string) => {
     const text = question.trim().slice(0, 1000);
     if (!text || sending.current) return;
     sending.current = true;
@@ -86,12 +108,13 @@ export function MiraChatOverlay({
     setDraft("");
     setError(null);
     setBusy(true);
+    setQuickReplies([]);
 
     // The guide answers cached questions instantly. Hold the reply back for a
     // beat so the typing indicator is seen and the answer feels considered.
     try {
       const [reply]: [ChatReply, unknown] = await Promise.all([
-        sendChat(next, { topicId }),
+        sendChat(next, { topicId: topic }),
         new Promise((resolve) => setTimeout(resolve, MIN_THINKING_MS)),
       ]);
       setMessages((current) => [
@@ -100,8 +123,11 @@ export function MiraChatOverlay({
           role: "assistant",
           content: reply.reply,
           topicId: reply.topicId ?? null,
+          safetyLevel: reply.safetyLevel,
+          quickReplies: reply.quickReplies,
         },
       ]);
+      setQuickReplies(reply.quickReplies ?? []);
     } catch (e) {
       setError(
         e instanceof Error ? e.message : "Unable to reach Mira. Try again.",
@@ -146,9 +172,26 @@ export function MiraChatOverlay({
               <Text style={styles.headingTitle}>Mira Assistant</Text>
               <View style={styles.presenceRow}>
                 <View style={styles.presenceDot} />
-                <Text style={styles.presence}>Online · App guide & health tips</Text>
+                <Text style={styles.presence}>
+                  {lowStimulation
+                    ? "Quiet mode"
+                    : "Online · App guide & health tips"}
+                </Text>
               </View>
             </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Toggle low stimulation mode"
+              accessibilityState={{ selected: lowStimulation }}
+              onPress={() => setLowStimulation((v) => !v)}
+              style={[styles.quietToggle, lowStimulation && styles.quietToggleOn]}
+            >
+              <Moon
+                size={15}
+                color={lowStimulation ? "#FFFFFF" : themeNew.miraPrimary}
+                strokeWidth={2.4}
+              />
+            </Pressable>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Close chat"
@@ -238,6 +281,7 @@ export function MiraChatOverlay({
               const feature = m.topicId
                 ? guide?.features.find((f) => f.id === m.topicId)
                 : undefined;
+              const isEmergency = m.safetyLevel === "emergency";
               return (
                 <View
                   key={i}
@@ -252,25 +296,41 @@ export function MiraChatOverlay({
                     </View>
                   ) : null}
                   <View style={styles.bubbleWrap}>
-                    <MessageReveal>
-                    <View
-                      style={[
-                        styles.bubble,
-                        m.role === "user"
-                          ? styles.bubbleUser
-                          : styles.bubbleAssistant,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.bubbleText,
-                          m.role === "user" && styles.bubbleTextUser,
-                        ]}
-                      >
-                        {m.content}
-                      </Text>
-                    </View>
-                    </MessageReveal>
+                    {isEmergency ? (
+                      <View style={styles.emergencyPanel}>
+                        <View style={styles.emergencyHead}>
+                          <AlertTriangle
+                            size={16}
+                            color={themeNew.miraPrimary}
+                            strokeWidth={2.4}
+                          />
+                          <Text style={styles.emergencyTitle}>
+                            Please get help now
+                          </Text>
+                        </View>
+                        <Text style={styles.emergencyBody}>{m.content}</Text>
+                      </View>
+                    ) : (
+                      <MessageReveal>
+                        <View
+                          style={[
+                            styles.bubble,
+                            m.role === "user"
+                              ? styles.bubbleUser
+                              : styles.bubbleAssistant,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.bubbleText,
+                              m.role === "user" && styles.bubbleTextUser,
+                            ]}
+                          >
+                            {m.content}
+                          </Text>
+                        </View>
+                      </MessageReveal>
+                    )}
                     {feature && onNavigate ? (
                       <Pressable
                         onPress={() => goTo(feature)}
@@ -285,6 +345,23 @@ export function MiraChatOverlay({
                 </View>
               );
             })}
+            {quickReplies.length > 0 && !busy ? (
+              <View style={styles.quickRow}>
+                {quickReplies.map((qr) => (
+                  <Pressable
+                    key={qr.id}
+                    accessibilityRole="button"
+                    onPress={() => void send(qr.label)}
+                    style={({ pressed }) => [
+                      styles.quickChip,
+                      pressed && styles.quickChipPressed,
+                    ]}
+                  >
+                    <Text style={styles.quickChipText}>{qr.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            ) : null}
             {busy ? (
               <View style={styles.message}>
                 <View style={styles.miniAvatar}>
@@ -450,6 +527,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   heading: { flex: 1, gap: 2 },
+  quietToggle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.18)",
+  },
+  quietToggleOn: { backgroundColor: themeNew.miraPrimary },
   headingTitle: {
     ...typography.bodyMedium,
     fontSize: 16,
@@ -585,6 +671,48 @@ const styles = StyleSheet.create({
     ...typography.micro,
     fontWeight: "700",
     color: themeNew.primary,
+  },
+  emergencyPanel: {
+    backgroundColor: "#FFF3F3",
+    borderRadius: 15,
+    borderBottomLeftRadius: 5,
+    borderWidth: 1,
+    borderColor: "#F5C6C6",
+    paddingHorizontal: 13,
+    paddingVertical: 11,
+    gap: 6,
+  },
+  emergencyHead: { flexDirection: "row", alignItems: "center", gap: 6 },
+  emergencyTitle: {
+    ...typography.micro,
+    fontWeight: "700",
+    color: "#C9404C",
+  },
+  emergencyBody: {
+    ...typography.caption,
+    lineHeight: 19,
+    color: themeNew.textPrimary,
+  },
+  quickRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    paddingLeft: 34,
+    paddingTop: 4,
+  },
+  quickChip: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: themeNew.miraComposerStroke,
+    backgroundColor: "#F6F9FE",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  quickChipPressed: { backgroundColor: themeNew.blueTint },
+  quickChipText: {
+    ...typography.micro,
+    fontWeight: "600",
+    color: themeNew.miraPrimary,
   },
   thinking: {
     ...typography.caption,

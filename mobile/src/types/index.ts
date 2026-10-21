@@ -53,7 +53,39 @@ export interface RiskProfile {
   caffeine_profile?: string;
   trigger_profile: string[];
   resting_hr?: number;
+  sleep_hours?: number;
   profile_version: string;
+}
+
+/** One thing worth attention, derived from the assessment answers. */
+export interface StatusFocusArea {
+  area: string;
+  detail: string;
+  card_id?: string | null;
+}
+
+/** One low-risk action to try. */
+export interface StatusTip {
+  card_id: string;
+  title: string;
+  body: string;
+}
+
+/**
+ * The person's standing from their assessment answers.
+ *
+ * Deliberately carries no risk level or score: the risk bands are
+ * calibrated against sensor readings, not questionnaire answers.
+ */
+export interface AssessmentStatus {
+  headline: string;
+  summary: string;
+  focus_areas: StatusFocusArea[];
+  strengths: StatusFocusArea[];
+  tips: StatusTip[];
+  baseline_note: string;
+  source_note: string;
+  content_version: string;
 }
 
 export interface BaselineEstimates {

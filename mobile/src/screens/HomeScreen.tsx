@@ -14,6 +14,7 @@ import {
 } from "lucide-react-native";
 import { IconCircle } from "../components/IconCircle";
 import { AmbientBackground } from "../components/AmbientBackground";
+import { CurrentStatusCard } from "../components/CurrentStatusCard";
 import { LoadingState } from "../components/LoadingState";
 import { MetricCard } from "../components/MetricCard";
 import { RiskSummaryCard } from "../components/RiskSummaryCard";
@@ -25,8 +26,9 @@ import { typography } from "../constants/typography";
 import { useAuth } from "../hooks/useAuth";
 import { useNetwork } from "../hooks/useNetwork";
 import { useSensorData } from "../hooks/useSensorData";
-import type { BaselineEstimates } from "../types";
+import type { BaselineEstimates, AssessmentStatus } from "../types";
 import * as userService from "../services/userService";
+import { openMira } from "../services/miraBus";
 import type {
   MainTabParamList,
   RootStackParamList,
@@ -44,6 +46,7 @@ export function HomeScreen({ navigation }: Props) {
   const { user } = useAuth();
   const online = useNetwork();
   const [baseline, setBaseline] = useState<BaselineEstimates | null>(null);
+  const [status, setStatus] = useState<AssessmentStatus | null>(null);
   const {
     mode,
     prediction,
@@ -66,6 +69,7 @@ export function HomeScreen({ navigation }: Props) {
 
   useEffect(() => {
     userService.getBaseline().then(setBaseline).catch(() => undefined);
+    userService.getStatus().then(setStatus).catch(() => undefined);
   }, []);
 
   const firstName = user?.name?.split(" ")[0] ?? "there";
@@ -109,6 +113,13 @@ export function HomeScreen({ navigation }: Props) {
             sentence={riskSentence(level, score)}
           />
         </Pressable>
+      ) : status ? (
+        // The assessment is done, so the person already has a standing even
+        // before a wearable sends any readings.
+        <CurrentStatusCard
+          status={status}
+          onAskMira={() => openMira("status")}
+        />
       ) : (
         <EmptyState
           title="No monitoring data yet"
