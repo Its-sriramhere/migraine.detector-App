@@ -1,6 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const raw = process.env.EXPO_PUBLIC_API_URL ?? "http://192.168.1.84:8000/api";
+// The public backend. Override at build time with EXPO_PUBLIC_API_URL, or at
+// runtime from the in-app "Backend connection" screen.
+const raw = process.env.EXPO_PUBLIC_API_URL ?? "https://migraine-detector-api.onrender.com/api";
 const BACKEND_KEY = "mg_backend_url_v1";
 let backend = raw.replace(/\/$/, "");
 let initialized: Promise<void> | null = null;

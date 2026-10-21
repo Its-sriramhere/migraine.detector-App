@@ -46,7 +46,7 @@ export function BackendScreen({ navigation }: NativeStackScreenProps<RootStackPa
   return (
     <ScrollView style={styles.page} contentContainerStyle={[styles.content, { paddingTop: insets.top + 16 }]} keyboardShouldPersistTaps="handled">
       <AppHeader title="Backend connection" onBack={() => navigation.goBack()} />
-      <Text style={styles.body}>{"Point the app at a Migraine Detector backend. Use the public HTTPS address of the deployed API to connect over cellular data from anywhere, or your computer's LAN IP (for example http://192.168.1.84:8000/api) to test on the same Wi-Fi."}</Text>
+      <Text style={styles.body}>{"Point the app at a Migraine Detector backend. Use the public HTTPS address of the deployed API to connect over cellular data from anywhere, or your computer's LAN address (for example http://<your-computer-ip>:8000/api) to test on the same Wi-Fi."}</Text>
       <Input label="Backend API address" value={address} onChangeText={setAddress} autoCapitalize="none" placeholder="https://your-api.onrender.com/api" />
       <PrimaryButton title="Test connection" variant="secondary" loading={busy} onPress={() => void run(false)} />
       <PrimaryButton title="Save and sign in" loading={busy} onPress={() => void run(true)} />
